@@ -2,7 +2,11 @@
 /bin
 /pkg
 /src
+
 .vagrant
 Vagrantfile
-Gemfile*
+
 /packer-*
+
+*.rb
+Gemfile*
