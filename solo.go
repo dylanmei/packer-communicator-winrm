@@ -26,7 +26,7 @@ func solo() bool {
 }
 
 func shell(user, pass string, commands []string) {
-	s, err := winrm.NewShell("vagrant", "vagrant")
+	s, err := winrm.NewShell(user, pass)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
