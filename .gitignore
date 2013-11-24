@@ -1,0 +1,8 @@
+.DS_Store
+/bin
+/pkg
+/src
+.vagrant
+Vagrantfile
+Gemfile*
+/packer-*
