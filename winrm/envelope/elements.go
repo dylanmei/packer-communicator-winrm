@@ -21,9 +21,10 @@ type Header struct {
 	MaxEnvelopeSize  *wsman.MaxEnvelopeSize        `xml:"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd MaxEnvelopeSize"`
 	OperationTimeout string                        `xml:"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd OperationTimeout"`
 	ResourceURI      *wsman.AttributableURI        `xml:"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd ResourceURI"`
-	OptionSet        *wsman.OptionSet              `xml:"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd OptionSet"`
+	OptionSet        *wsman.OptionSet              `xml:"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd OptionSet,omitempty"`
+	SelectorSet      *wsman.SelectorSet            `xml:"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd SelectorSet,omitempty"`
 }
 
 type Body struct {
-	Shell *rsp.Shell `xml:"http://schemas.microsoft.com/wbem/wsman/1/windows/shell Shell"`
+	Shell *rsp.Shell `xml:"http://schemas.microsoft.com/wbem/wsman/1/windows/shell Shell,omitempty"`
 }

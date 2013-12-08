@@ -18,3 +18,12 @@ type Option struct {
 	Name  string `xml:",attr"`
 	Value string `xml:",chardata"`
 }
+
+type SelectorSet struct {
+	Selectors []*Selector `xml:"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd Selector"`
+}
+
+type Selector struct {
+	Name  string `xml:",attr"`
+	Value string `xml:",chardata"`
+}
