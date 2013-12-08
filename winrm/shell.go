@@ -7,10 +7,16 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
+	"github.com/dylanmei/packer-communicator-winrm/winrm/addressing"
+	"github.com/dylanmei/packer-communicator-winrm/winrm/envelope"
+	"github.com/dylanmei/packer-communicator-winrm/winrm/rsp"
+	"github.com/dylanmei/packer-communicator-winrm/winrm/wsman"
+	"github.com/mitchellh/packer/common/uuid"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	_ "os"
 )
 
 type Shell struct {
@@ -19,60 +25,59 @@ type Shell struct {
 	password string
 }
 
-type RemoteShell struct {
-	ShellId string `xml:"ShellId"`
-}
-
-type SoapAction struct {
-	Action    string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing Action"`
-	ReplyTo   string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing ReplyTo"`
-	MessageID string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing MessageID"`
-	To        string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing To"`
-}
-
 func NewShell(user, pass string) (*Shell, error) {
-	command := `
-<env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns:env="http://www.w3.org/2003/05/soap-envelope"
-	xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing"
-	xmlns:b="http://schemas.dmtf.org/wbem/wsman/1/cimbinding.xsd"
-	xmlns:n="http://schemas.xmlsoap.org/ws/2004/09/enumeration"
-	xmlns:x="http://schemas.xmlsoap.org/ws/2004/09/transfer"
-	xmlns:w="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd"
-	xmlns:p="http://schemas.microsoft.com/wbem/wsman/1/wsman.xsd"
-	xmlns:rsp="http://schemas.microsoft.com/wbem/wsman/1/windows/shell"
-	xmlns:cfg="http://schemas.microsoft.com/wbem/wsman/1/config"
->
-  <env:Header>
-	<a:To>http://localhost:5985/wsman</a:To>
-	<a:ReplyTo>
-	  <a:Address mustUnderstand="true">http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</a:Address>
-	</a:ReplyTo>
-	<w:MaxEnvelopeSize mustUnderstand="true">153600</w:MaxEnvelopeSize>
-	<a:MessageID>uuid:E266B619-7457-4B69-AEAB-633E5E36017A</a:MessageID>
-	<w:Locale xml:lang="en-US" mustUnderstand="false"/>
-	<p:DataLocale xml:lang="en-US" mustUnderstand="false"/>
-	<w:OperationTimeout>PT60S</w:OperationTimeout>
-	<w:ResourceURI mustUnderstand="true">http://schemas.microsoft.com/wbem/wsman/1/windows/shell/cmd</w:ResourceURI>
-	<a:Action mustUnderstand="true">http://schemas.xmlsoap.org/ws/2004/09/transfer/Create</a:Action>
-	<w:OptionSet>
-	  <w:Option Name="WINRS_NOPROFILE">FALSE</w:Option>
-	  <w:Option Name="WINRS_CODEPAGE">437</w:Option>
-	</w:OptionSet>
-  </env:Header>
-  <env:Body>
-	<rsp:Shell>
-	  <rsp:InputStreams>stdin</rsp:InputStreams>
-	  <rsp:OutputStreams>stdout stderr</rsp:OutputStreams>
-	</rsp:Shell>
-  </env:Body>
-</env:Envelope>`
+	header := &envelope.Header{
+		MessageID: "uuid:" + uuid.TimeOrderedUUID(),
+		Action: &addressing.AttributedURI{
+			URI:            "http://schemas.xmlsoap.org/ws/2004/09/transfer/Create",
+			MustUnderstand: true,
+		},
+		To: &addressing.AttributedURI{
+			URI: "http://localhost:5985/wsman",
+		},
+		ReplyTo: &addressing.EndpointReference{
+			&addressing.AttributedURI{
+				URI:            "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous",
+				MustUnderstand: true,
+			},
+		},
+		MaxEnvelopeSize: &wsman.MaxEnvelopeSize{
+			Value:          153600,
+			MustUnderstand: true,
+		},
+		OperationTimeout: "PT60S",
+		ResourceURI: &wsman.AttributableURI{
+			URI:            "http://schemas.microsoft.com/wbem/wsman/1/windows/shell/cmd",
+			MustUnderstand: true,
+		},
+		OptionSet: &wsman.OptionSet{
+			Options: []*wsman.Option{
+				&wsman.Option{"WINRS_NOPROFILE", "FALSE"},
+				&wsman.Option{"WINRS_CODEPAGE", "437"},
+			},
+		},
+	}
 
-	log.Print(user, pass)
+	env := &envelope.Envelope{
+		Header: header,
+		Body: &envelope.Body{
+			&rsp.Shell{
+				InputStreams:  "stdin",
+				OutputStreams: "stdout stderr",
+			},
+		},
+	}
+
+	//	xml, err := xml.Marshal(env)
+	xml, err := xml.MarshalIndent(env, " ", "	")
+	if err != nil {
+		log.Fatalf("error: %v\n", err)
+	}
+	//	os.Stdout.Write(xml)
+	//	fmt.Println()
 
 	request, _ := http.NewRequest("POST",
-		"http://localhost:5985/wsman", bytes.NewBufferString(command))
+		"http://localhost:5985/wsman", bytes.NewReader(xml))
 	request.Header.Add("Content-Type", "application/soap+xml;charset=UTF-8")
 	request.Header.Add("Authorization", "Basic "+
 		base64.StdEncoding.EncodeToString([]byte(user+":"+pass)))
@@ -148,7 +153,11 @@ func (s *Shell) Delete() error {
 	return nil
 }
 
-func decodeResponse(reader io.Reader) *RemoteShell {
+type remoteShell struct {
+	ShellId string `xml:"ShellId"`
+}
+
+func decodeResponse(reader io.Reader) *remoteShell {
 	decoder := xml.NewDecoder(reader)
 
 	for {
@@ -160,12 +169,12 @@ func decodeResponse(reader io.Reader) *RemoteShell {
 		switch se := t.(type) {
 		case xml.StartElement:
 			if se.Name.Space == NS_SOAP_ENV && se.Name.Local == "Header" {
-				var sa SoapAction
-				decoder.DecodeElement(&sa, &se)
-				fmt.Println(sa.Action)
+				var h envelope.Header
+				decoder.DecodeElement(&h, &se)
+				fmt.Println(h.Action.URI)
 			}
 			if se.Name.Space == NS_WIN_SHELL && se.Name.Local == "Shell" {
-				var rs RemoteShell
+				var rs remoteShell
 				decoder.DecodeElement(&rs, &se)
 				return &rs
 			}
