@@ -14,9 +14,7 @@ import (
 	"github.com/mitchellh/packer/common/uuid"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
-	_ "os"
 )
 
 type Shell struct {
@@ -68,10 +66,9 @@ func NewShell(user, pass string) (*Shell, error) {
 		},
 	}
 
-	//	xml, err := xml.Marshal(env)
 	xml, err := xml.MarshalIndent(env, " ", "	")
 	if err != nil {
-		log.Fatalf("error: %v\n", err)
+		return nil, err
 	}
 	//	os.Stdout.Write(xml)
 	//	fmt.Println()
