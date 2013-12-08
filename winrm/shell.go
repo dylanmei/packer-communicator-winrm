@@ -23,6 +23,13 @@ type RemoteShell struct {
 	ShellId string `xml:"ShellId"`
 }
 
+type SoapAction struct {
+	Action    string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing Action"`
+	ReplyTo   string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing ReplyTo"`
+	MessageID string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing MessageID"`
+	To        string `xml:"http://schemas.xmlsoap.org/ws/2004/08/addressing To"`
+}
+
 func NewShell(user, pass string) (*Shell, error) {
 	command := `
 <env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -152,6 +159,11 @@ func decodeResponse(reader io.Reader) *RemoteShell {
 
 		switch se := t.(type) {
 		case xml.StartElement:
+			if se.Name.Space == NS_SOAP_ENV && se.Name.Local == "Header" {
+				var sa SoapAction
+				decoder.DecodeElement(&sa, &se)
+				fmt.Println(sa.Action)
+			}
 			if se.Name.Space == NS_WIN_SHELL && se.Name.Local == "Shell" {
 				var rs RemoteShell
 				decoder.DecodeElement(&rs, &se)
