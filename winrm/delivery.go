@@ -24,33 +24,6 @@ func (e *HttpError) Error() string {
 
 var ErrHttpAuthenticate = &HttpError{401, "Failed to authenticate"}
 
-func fault(r *http.Response) error {
-	if r.StatusCode == 401 {
-		return ErrHttpAuthenticate
-	}
-
-	if h := r.Header.Get("Content-Type"); strings.HasPrefix(h, "application/soap+xml") {
-		body, _ := ioutil.ReadAll(r.Body)
-		buffer := bytes.NewBuffer(body)
-
-		f := &HttpError{500, "Unparsable SOAP error"}
-		root, err := xmlpath.Parse(buffer)
-
-		if err != nil {
-			return f
-		}
-
-		path := xmlpath.MustCompile("//Fault/Reason/Text")
-		if reason, ok := path.String(root); ok {
-			f.Status = "FAULT: " + reason
-		}
-
-		return f
-	}
-
-	return &HttpError{r.StatusCode, r.Status}
-}
-
 func deliver(user, pass, env string) (io.Reader, error) {
 	if os.Getenv("WINRM_DEBUG") != "" {
 		log.Println("delivering", string(env))
@@ -70,7 +43,7 @@ func deliver(user, pass, env string) (io.Reader, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return nil, fault(response)
+		return nil, handleError(response)
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
@@ -83,4 +56,38 @@ func deliver(user, pass, env string) (io.Reader, error) {
 	}
 
 	return bytes.NewReader(body), nil
+}
+
+func handleError(r *http.Response) error {
+	if r.StatusCode == 401 {
+		return ErrHttpAuthenticate
+	}
+
+	if h := r.Header.Get("Content-Type"); strings.HasPrefix(h, "application/soap+xml") {
+		return handleFault(r)
+	}
+
+	return &HttpError{r.StatusCode, r.Status}
+}
+
+func handleFault(r *http.Response) error {
+	body, _ := ioutil.ReadAll(r.Body)
+	if os.Getenv("WINRM_DEBUG") != "" {
+		log.Println("faulting", string(body))
+	}
+
+	buffer := bytes.NewBuffer(body)
+	f := &HttpError{500, "Unparsable SOAP error"}
+	root, err := xmlpath.Parse(buffer)
+
+	if err != nil {
+		return f
+	}
+
+	path := xmlpath.MustCompile("//Fault/Reason/Text")
+	if reason, ok := path.String(root); ok {
+		f.Status = "FAULT: " + reason
+	}
+
+	return f
 }

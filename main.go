@@ -27,7 +27,8 @@ func main() {
 
 			command, err := shell.NewCommand(commands[0])
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
+				return
 			}
 
 			log.Println("command:", command.Id)
