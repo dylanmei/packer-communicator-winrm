@@ -1,4 +1,4 @@
-package winrm
+package main
 
 import (
 	"errors"

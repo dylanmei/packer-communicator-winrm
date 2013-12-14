@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/dylanmei/packer-communicator-winrm/winrm"
 	"github.com/mitchellh/packer/packer/plugin"
 )
 
@@ -14,7 +13,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		server.RegisterCommunicator(new(winrm.Communicator))
+		server.RegisterCommunicator(new(Communicator))
 		server.Serve()
 	}
 }
