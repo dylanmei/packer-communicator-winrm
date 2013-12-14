@@ -3,50 +3,61 @@ package winrm
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/xml"
 	"fmt"
-	"github.com/dylanmei/packer-communicator-winrm/winrm/envelope"
 	"io"
 	"io/ioutil"
+	"launchpad.net/xmlpath"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 type HttpError struct {
 	StatusCode int
-	message    string
+	Status     string
 }
 
-func (he *HttpError) Error() string {
-	return fmt.Sprintf("[%d] %s", he.StatusCode, he.message)
+func (e *HttpError) Error() string {
+	return fmt.Sprintf("[%d] %s", e.StatusCode, e.Status)
 }
 
 var ErrHttpAuthenticate = &HttpError{401, "Failed to authenticate"}
 
-func NewHttpError(r *http.Response) *HttpError {
+func fault(r *http.Response) error {
 	if r.StatusCode == 401 {
 		return ErrHttpAuthenticate
 	}
-	// fmt.Println("Unexpected HTTP Status", response.Status)
-	// for key, value := range response.Header {
-	// 	fmt.Println(" ", key, ":", value)
-	// }
+
+	if h := r.Header.Get("Content-Type"); strings.HasPrefix(h, "application/soap+xml") {
+		body, _ := ioutil.ReadAll(r.Body)
+		buffer := bytes.NewBuffer(body)
+
+		f := &HttpError{500, "Unparsable SOAP error"}
+		root, err := xmlpath.Parse(buffer)
+
+		if err != nil {
+			return f
+		}
+
+		path := xmlpath.MustCompile("//Fault/Reason/Text")
+		if reason, ok := path.String(root); ok {
+			f.Status = "FAULT: " + reason
+		}
+
+		return f
+	}
+
 	return &HttpError{r.StatusCode, r.Status}
 }
 
-func sendEnvelope(user, pass string, env *envelope.Envelope) (io.Reader, error) {
-	xmlEnvelope, err := xml.MarshalIndent(env, " ", "	")
-	if err != nil {
-		return nil, err
-	}
-
+func deliver(user, pass, env string) (io.Reader, error) {
 	if os.Getenv("WINRM_DEBUG") != "" {
-		log.Println("sending", string(xmlEnvelope))
+		log.Println("delivering", string(env))
 	}
 
 	request, _ := http.NewRequest("POST",
-		"http://localhost:5985/wsman", bytes.NewReader(xmlEnvelope))
+		"http://localhost:5985/wsman", bytes.NewBufferString(env))
 	request.Header.Add("Content-Type", "application/soap+xml;charset=UTF-8")
 	request.Header.Add("Authorization", "Basic "+
 		base64.StdEncoding.EncodeToString([]byte(user+":"+pass)))
@@ -57,11 +68,11 @@ func sendEnvelope(user, pass string, env *envelope.Envelope) (io.Reader, error) 
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return nil, NewHttpError(response)
+		return nil, fault(response)
 	}
 
-	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, err

@@ -24,6 +24,13 @@ func main() {
 
 			defer shell.Delete()
 			log.Println("shell:", shell.Id)
+
+			command, err := shell.NewCommand(commands[0])
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Println("command:", command.Id)
 		},
 	})
 }

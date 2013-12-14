@@ -32,7 +32,7 @@ func (cmd *shell) run(commands ...string) {
 	}
 
 	if cmd.Handle != nil {
-		cmd.Handle(*cmd.user, *cmd.pass)
+		cmd.Handle(*cmd.user, *cmd.pass, commands...)
 	}
 }
 
