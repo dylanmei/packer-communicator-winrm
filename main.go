@@ -10,6 +10,11 @@ import (
 
 func main() {
 	if !solo() {
-		plugin.ServeCommunicator(new(winrm.Communicator))
+		server, err := plugin.Server()
+		if err != nil {
+			panic(err)
+		}
+		server.RegisterCommunicator(new(winrm.Communicator))
+		server.Serve()
 	}
 }
