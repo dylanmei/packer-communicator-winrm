@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/xml"
+	"errors"
 	"github.com/dylanmei/packer-communicator-winrm/winrm/addressing"
 	"github.com/dylanmei/packer-communicator-winrm/winrm/envelope"
 	"github.com/dylanmei/packer-communicator-winrm/winrm/rsp"
@@ -11,7 +12,10 @@ import (
 	"github.com/mitchellh/packer/common/uuid"
 	"io"
 	"io/ioutil"
+	"launchpad.net/xmlpath"
+	"log"
 	"net/http"
+	"os"
 )
 
 type Shell struct {
@@ -68,8 +72,18 @@ func NewShell(user, pass string) (*Shell, error) {
 		return nil, err
 	}
 
-	rs := decodeResponse(response)
-	return &Shell{rs.ShellId, user, pass}, nil
+	path := xmlpath.MustCompile("//Body/Shell/ShellId")
+	root, err := xmlpath.Parse(response)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	shell, ok := path.String(root)
+	if !ok {
+		return nil, errors.New("Could not create shell.")
+	}
+
+	return &Shell{shell, user, pass}, nil
 }
 
 func (s *Shell) Delete() error {
@@ -114,13 +128,17 @@ func (s *Shell) Delete() error {
 }
 
 func sendEnvelope(user, pass string, env *envelope.Envelope) (io.Reader, error) {
-	xml, err := xml.MarshalIndent(env, " ", "	")
+	xmlEnvelope, err := xml.MarshalIndent(env, " ", "	")
 	if err != nil {
 		return nil, err
 	}
 
+	if os.Getenv("WINRM_DEBUG") != "" {
+		log.Println("sending", string(xmlEnvelope))
+	}
+
 	request, _ := http.NewRequest("POST",
-		"http://localhost:5985/wsman", bytes.NewReader(xml))
+		"http://localhost:5985/wsman", bytes.NewReader(xmlEnvelope))
 	request.Header.Add("Content-Type", "application/soap+xml;charset=UTF-8")
 	request.Header.Add("Authorization", "Basic "+
 		base64.StdEncoding.EncodeToString([]byte(user+":"+pass)))
@@ -140,35 +158,10 @@ func sendEnvelope(user, pass string, env *envelope.Envelope) (io.Reader, error) 
 	if err != nil {
 		return nil, err
 	}
-	return bytes.NewReader(body), nil
-}
 
-type remoteShell struct {
-	ShellId string `xml:"ShellId"`
-}
-
-func decodeResponse(reader io.Reader) *remoteShell {
-	decoder := xml.NewDecoder(reader)
-
-	for {
-		t, _ := decoder.Token()
-		if t == nil {
-			break
-		}
-
-		switch se := t.(type) {
-		case xml.StartElement:
-			if se.Name.Space == NS_SOAP_ENV && se.Name.Local == "Header" {
-				var h envelope.Header
-				decoder.DecodeElement(&h, &se)
-			}
-			if se.Name.Space == NS_WIN_SHELL && se.Name.Local == "Shell" {
-				var rs remoteShell
-				decoder.DecodeElement(&rs, &se)
-				return &rs
-			}
-		}
+	if os.Getenv("WINRM_DEBUG") != "" {
+		log.Println("receiving", string(body))
 	}
 
-	return nil
+	return bytes.NewReader(body), nil
 }
