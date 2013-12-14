@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/mitchellh/packer/packer"
+	rpc "github.com/mitchellh/packer/packer/plugin"
 	"io"
 )
 
@@ -48,4 +49,13 @@ func (c *Communicator) UploadDir(dst string, src string, exclude []string) error
 // block until it completes.
 func (c *Communicator) Download(path string, w io.Writer) error {
 	return errors.New("Not implemented")
+}
+
+func plugin() {
+	server, err := rpc.Server()
+	if err != nil {
+		panic(err)
+	}
+	server.RegisterCommunicator(new(Communicator))
+	server.Serve()
 }
