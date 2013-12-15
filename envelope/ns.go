@@ -1,9 +1,10 @@
-package winrm
+package envelope
 
 const (
 	NS_ADDRESSING  = "http://schemas.xmlsoap.org/ws/2004/08/addressing"        // a:
 	NS_CIMBINDING  = "http://schemas.dmtf.org/wbem/wsman/1/cimbinding.xsd"     // b:
 	NS_ENUM        = "http://schemas.xmlsoap.org/ws/2004/09/enumeration"       // n:
+	NS_SCHEMA      = "http://www.w3.org/2001/XMLSchema"                        // xsd:
 	NS_SCHEMA_INST = "http://www.w3.org/2001/XMLSchema-instance"               // xsi:
 	NS_SOAP_ENV    = "http://www.w3.org/2003/05/soap-envelope"                 // s:
 	NS_TRANSFER    = "http://schemas.xmlsoap.org/ws/2004/09/transfer"          // x:

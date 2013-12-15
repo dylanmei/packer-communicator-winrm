@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+type Deliverable interface {
+	Xml() string
+}
+
 type HttpError struct {
 	StatusCode int
 	Status     string
@@ -24,13 +28,14 @@ func (e *HttpError) Error() string {
 
 var ErrHttpAuthenticate = &HttpError{401, "Failed to authenticate"}
 
-func deliver(user, pass, env string) (io.Reader, error) {
+func deliver(user, pass string, delivery Deliverable) (io.Reader, error) {
+	xml := delivery.Xml()
 	if os.Getenv("WINRM_DEBUG") != "" {
-		log.Println("delivering", string(env))
+		log.Println("delivering", xml)
 	}
 
 	request, _ := http.NewRequest("POST",
-		"http://localhost:5985/wsman", bytes.NewBufferString(env))
+		"http://localhost:5985/wsman", bytes.NewBufferString(xml))
 	request.Header.Add("Content-Type", "application/soap+xml;charset=UTF-8")
 	request.Header.Add("Authorization", "Basic "+
 		base64.StdEncoding.EncodeToString([]byte(user+":"+pass)))
