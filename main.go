@@ -23,7 +23,7 @@ func main() {
 			}
 
 			defer shell.Delete()
-			log.Println("shell:", shell.Id)
+			log.Println("Shell:", shell.Id)
 
 			command, err := shell.NewCommand(commands[0])
 			if err != nil {
@@ -31,7 +31,19 @@ func main() {
 				return
 			}
 
-			log.Println("command:", command.Id)
+			output, err := command.Receive()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			log.Printf("Command: %s, ExitCode: %d", command.CommandText, output.ExitCode)
+			for _, value := range output.Stdout {
+				log.Println("stdout", value)
+			}
+			for _, value := range output.Stderr {
+				log.Println("stderr", value)
+			}
 		},
 	})
 }

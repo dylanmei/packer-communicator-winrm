@@ -14,11 +14,6 @@ type Shell struct {
 	password string
 }
 
-type Command struct {
-	Id    string
-	shell *Shell
-}
-
 func NewShell(user, pass string) (*Shell, error) {
 	env := &envelope.CreateShell{uuid.TimeOrderedUUID()}
 	response, err := deliver(user, pass, env)
@@ -29,7 +24,7 @@ func NewShell(user, pass string) (*Shell, error) {
 	path := xmlpath.MustCompile("//Body/Shell/ShellId")
 	root, err := xmlpath.Parse(response)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	shellId, ok := path.String(root)
@@ -58,7 +53,7 @@ func (s *Shell) NewCommand(cmd string) (*Command, error) {
 		return nil, errors.New("Could not create command.")
 	}
 
-	return &Command{commandId, s}, nil
+	return &Command{s, commandId, cmd}, nil
 }
 
 func (s *Shell) Delete() error {
