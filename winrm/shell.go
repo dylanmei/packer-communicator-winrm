@@ -10,13 +10,14 @@ import (
 
 type Shell struct {
 	Id       string
+	Endpoint string
 	Owner    string
 	password string
 }
 
-func NewShell(user, pass string) (*Shell, error) {
+func NewShell(endpoint, user, pass string) (*Shell, error) {
 	env := &envelope.CreateShell{uuid.TimeOrderedUUID()}
-	response, err := deliver(user, pass, env)
+	response, err := deliver(endpoint, user, pass, env)
 	if err != nil {
 		return nil, err
 	}
@@ -27,17 +28,17 @@ func NewShell(user, pass string) (*Shell, error) {
 		return nil, err
 	}
 
-	shellId, ok := path.String(root)
+	id, ok := path.String(root)
 	if !ok {
 		return nil, errors.New("Could not create shell.")
 	}
 
-	return &Shell{shellId, user, pass}, nil
+	return &Shell{id, endpoint, user, pass}, nil
 }
 
 func (s *Shell) NewCommand(cmd string) (*Command, error) {
 	env := &envelope.CreateCommand{uuid.TimeOrderedUUID(), s.Id, cmd}
-	response, err := deliver(s.Owner, s.password, env)
+	response, err := deliver(s.Endpoint, s.Owner, s.password, env)
 	if err != nil {
 		return nil, err
 	}
@@ -48,17 +49,17 @@ func (s *Shell) NewCommand(cmd string) (*Command, error) {
 		return nil, err
 	}
 
-	commandId, ok := path.String(root)
+	id, ok := path.String(root)
 	if !ok {
 		return nil, errors.New("Could not create command.")
 	}
 
-	return &Command{s, commandId, cmd}, nil
+	return &Command{s, id, cmd}, nil
 }
 
 func (s *Shell) Delete() error {
 	env := &envelope.DeleteShell{uuid.TimeOrderedUUID(), s.Id}
-	_, err := deliver(s.Owner, s.password, env)
+	_, err := deliver(s.Endpoint, s.Owner, s.password, env)
 
 	if err != nil {
 		log.Println(err.Error())

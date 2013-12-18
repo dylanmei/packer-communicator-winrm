@@ -24,7 +24,7 @@ type CommandOutput struct {
 
 func (c *Command) Receive() (*CommandOutput, error) {
 	env := &envelope.Receive{uuid.TimeOrderedUUID(), c.shell.Id, c.Id}
-	response, err := deliver(c.shell.Owner, c.shell.password, env)
+	response, err := deliver(c.shell.Endpoint, c.shell.Owner, c.shell.password, env)
 	if err != nil {
 		return nil, err
 	}

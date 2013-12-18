@@ -2,7 +2,6 @@ package winrm
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,17 +27,15 @@ func (e *HttpError) Error() string {
 
 var ErrHttpAuthenticate = &HttpError{401, "Failed to authenticate"}
 
-func deliver(user, pass string, delivery Deliverable) (io.Reader, error) {
+func deliver(endpoint, user, pass string, delivery Deliverable) (io.Reader, error) {
 	xml := delivery.Xml()
 	if os.Getenv("WINRM_DEBUG") != "" {
 		log.Println("delivering", xml)
 	}
 
-	request, _ := http.NewRequest("POST",
-		"http://localhost:5985/wsman", bytes.NewBufferString(xml))
+	request, _ := http.NewRequest("POST", endpoint, bytes.NewBufferString(xml))
+	request.SetBasicAuth(user, pass)
 	request.Header.Add("Content-Type", "application/soap+xml;charset=UTF-8")
-	request.Header.Add("Authorization", "Basic "+
-		base64.StdEncoding.EncodeToString([]byte(user+":"+pass)))
 
 	client := &http.Client{}
 	response, err := client.Do(request)
