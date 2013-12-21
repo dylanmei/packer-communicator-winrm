@@ -2,7 +2,7 @@ package winrm
 
 import (
 	"errors"
-	"github.com/dylanmei/packer-communicator-winrm/envelope"
+	"github.com/dylanmei/packer-communicator-winrm/winrm/envelope"
 	"github.com/mitchellh/packer/common/uuid"
 	"io"
 	"launchpad.net/xmlpath"
