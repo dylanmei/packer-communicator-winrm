@@ -15,7 +15,7 @@ type runner interface {
 type cmd struct {
 	user   *string
 	pass   *string
-	Handle func(user, pass string, commands ...string)
+	Handle func(user, pass, command string)
 }
 
 func (c *cmd) flags(name string) *flag.FlagSet {
@@ -32,7 +32,9 @@ func (c *cmd) run(commands ...string) {
 	}
 
 	if c.Handle != nil {
-		c.Handle(*c.user, *c.pass, commands...)
+		for _, command := range commands {
+			c.Handle(*c.user, *c.pass, command)
+		}
 	}
 }
 

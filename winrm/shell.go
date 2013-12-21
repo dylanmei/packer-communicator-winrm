@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/dylanmei/packer-communicator-winrm/envelope"
 	"github.com/mitchellh/packer/common/uuid"
+	"io"
 	"launchpad.net/xmlpath"
 	"log"
 )
@@ -13,6 +14,8 @@ type Shell struct {
 	Endpoint string
 	Owner    string
 	password string
+	Stdout   io.Writer
+	Stderr   io.Writer
 }
 
 func NewShell(endpoint, user, pass string) (*Shell, error) {
@@ -33,7 +36,7 @@ func NewShell(endpoint, user, pass string) (*Shell, error) {
 		return nil, errors.New("Could not create shell.")
 	}
 
-	return &Shell{id, endpoint, user, pass}, nil
+	return &Shell{id, endpoint, user, pass, nil, nil}, nil
 }
 
 func (s *Shell) NewCommand(cmd string) (*Command, error) {

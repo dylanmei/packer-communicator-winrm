@@ -1,14 +1,14 @@
 package main
 
 import (
-	"github.com/dylanmei/packer-communicator-winrm/winrm"
-	"log"
+	"github.com/mitchellh/packer/packer"
 	"os"
 )
 
 const endpoint = "http://localhost:5985/wsman"
 
 // SOLO USAGE: ./packer-communicator-winrm cmd -user vagrant -pass vagrant command-text
+// set WINRM_DEBUG=1 for more output
 
 func main() {
 	args := os.Args[1:]
@@ -18,34 +18,16 @@ func main() {
 	}
 
 	Run(&cmd{
-		Handle: func(user, pass string, commands ...string) {
-			shell, err := winrm.NewShell(endpoint, user, pass)
-			if err != nil {
-				log.Fatal(err.Error())
+		Handle: func(user, pass, command string) {
+			communicator := &Communicator{endpoint, user, pass}
+			rc := &packer.RemoteCmd{
+				Command: command,
+				Stdout:  os.Stdout,
+				Stderr:  os.Stderr,
 			}
 
-			defer shell.Delete()
-			log.Println("Shell:", shell.Id)
-
-			command, err := shell.NewCommand(commands[0])
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			output, err := command.Receive()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			log.Printf("Command: %s, ExitCode: %d", command.CommandText, output.ExitCode)
-			for _, value := range output.Stdout {
-				log.Println("stdout", value)
-			}
-			for _, value := range output.Stderr {
-				log.Println("stderr", value)
-			}
+			communicator.Start(rc)
+			rc.Wait()
 		},
 	})
 }

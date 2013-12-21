@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/dylanmei/packer-communicator-winrm/envelope"
 	"github.com/mitchellh/packer/common/uuid"
+	"io"
 	"launchpad.net/xmlpath"
 	"strconv"
 	"strings"
@@ -17,9 +18,8 @@ type Command struct {
 }
 
 type CommandOutput struct {
+	Done     bool
 	ExitCode int
-	Stdout   []string
-	Stderr   []string
 }
 
 func (c *Command) Receive() (*CommandOutput, error) {
@@ -55,9 +55,20 @@ func (c *Command) Receive() (*CommandOutput, error) {
 
 	result, _ := strconv.Atoi(value)
 	output := &CommandOutput{
+		Done:     true,
 		ExitCode: result,
-		Stdout:   collectStream(root, stdout),
-		Stderr:   collectStream(root, stderr),
+	}
+
+	if c.shell.Stdout != nil {
+		for _, s := range collectStream(root, stdout) {
+			io.WriteString(c.shell.Stdout, s)
+		}
+	}
+
+	if c.shell.Stderr != nil {
+		for _, s := range collectStream(root, stderr) {
+			io.WriteString(c.shell.Stderr, s)
+		}
 	}
 
 	return output, nil
