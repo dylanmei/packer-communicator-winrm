@@ -1,16 +1,20 @@
-## Packer WinRM Plugin [![wercker status](https://app.wercker.com/status/c702a1133a8359cc8830ad60487ee751 "wercker status")](https://app.wercker.com/project/bykey/c702a1133a8359cc8830ad60487ee751)
+
+## Packer WinRM Plugin
 
 A [Packer](http://www.packer.io/) communicator plugin for interacting with machines using Windows Remote Management.
 
 For more information on WinRM, please visit [Microsoft's WinRM site](http://msdn.microsoft.com/en-us/library/aa384426\(v=VS.85\).aspx).
 
+
 ### Status
 
 This is a work in progress. *It is not a usable Packer plugin yet*. However, while the kinks are being worked out it is also a stand-alone command-line application.
 
+[![wercker status](https://app.wercker.com/status/c702a1133a8359cc8830ad60487ee751/m "wercker status")](https://app.wercker.com/project/bykey/c702a1133a8359cc8830ad60487ee751)
+
 ### Usage
 
-A Packer *communicator* plugin must support the following functionality: Execute a shell command, upload a file, and upload a directory.
+A Packer *communicator* plugin must support the following functionality: Execute a shell command, upload a file, download a file, and upload a directory.
 
 #### Executing a shell command
 
@@ -18,15 +22,15 @@ A Packer *communicator* plugin must support the following functionality: Execute
 
 #### Uploading a file
 
-not started
+*not started*
+
+#### Downloading a file
+
+*not started*
 
 #### Uploading a directory
 
-not started
-
-#### Download a file
-
-not started
+*not started*
 
 ### Props
 
