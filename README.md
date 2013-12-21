@@ -1,4 +1,4 @@
-## Packer WinRM Plugin
+## Packer WinRM Plugin [![wercker status](https://app.wercker.com/status/c702a1133a8359cc8830ad60487ee751 "wercker status")](https://app.wercker.com/project/bykey/c702a1133a8359cc8830ad60487ee751)
 
 A [Packer](http://www.packer.io/) communicator plugin for interacting with machines using Windows Remote Management.
 
