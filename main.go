@@ -8,7 +8,7 @@ import (
 
 const endpoint = "http://localhost:5985/wsman"
 
-// SOLO USAGE: ./packer-communicator-winrm shell -user vagrant -pass vagrant command-text
+// SOLO USAGE: ./packer-communicator-winrm cmd -user vagrant -pass vagrant command-text
 
 func main() {
 	args := os.Args[1:]
@@ -17,7 +17,7 @@ func main() {
 		return
 	}
 
-	Run(&shell{
+	Run(&cmd{
 		Handle: func(user, pass string, commands ...string) {
 			shell, err := winrm.NewShell(endpoint, user, pass)
 			if err != nil {

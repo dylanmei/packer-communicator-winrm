@@ -12,27 +12,27 @@ type runner interface {
 	flags(string) *flag.FlagSet
 }
 
-type shell struct {
+type cmd struct {
 	user   *string
 	pass   *string
 	Handle func(user, pass string, commands ...string)
 }
 
-func (cmd *shell) flags(name string) *flag.FlagSet {
+func (c *cmd) flags(name string) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ExitOnError)
-	cmd.user = fs.String("user", "vagrant", "user to run as")
-	cmd.pass = fs.String("pass", "vagrant", "user's password")
+	c.user = fs.String("user", "vagrant", "user to run as")
+	c.pass = fs.String("pass", "vagrant", "user's password")
 	return fs
 }
 
-func (cmd *shell) run(commands ...string) {
+func (c *cmd) run(commands ...string) {
 	if len(commands) == 0 {
 		fmt.Fprint(os.Stderr, "specify a command to run\n")
 		fail()
 	}
 
-	if cmd.Handle != nil {
-		cmd.Handle(*cmd.user, *cmd.pass, commands...)
+	if c.Handle != nil {
+		c.Handle(*c.user, *c.pass, commands...)
 	}
 }
 
