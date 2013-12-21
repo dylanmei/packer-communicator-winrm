@@ -61,9 +61,12 @@ func Test_deleting_a_shell(t *testing.T) {
             </Envelope>`)
 	})
 
-	s := &Shell{"ABCXYZ", url, "", ""}
-	err := s.Delete()
+	s := &Shell{
+		Id:       "ABCXYZ",
+		Endpoint: url,
+	}
 
+	err := s.Delete()
 	Expect(err).To(BeNil())
 }
 

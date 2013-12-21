@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/mitchellh/packer/packer"
+	"log"
 	"os"
 )
 
@@ -26,7 +27,12 @@ func main() {
 				Stderr:  os.Stderr,
 			}
 
-			communicator.Start(rc)
+			err := communicator.Start(rc)
+			if err != nil {
+				log.Printf("unable to run command: %s", err)
+				return
+			}
+
 			rc.Wait()
 		},
 	})

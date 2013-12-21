@@ -25,7 +25,8 @@ func (e *HttpError) Error() string {
 	return fmt.Sprintf("[%d] %s", e.StatusCode, e.Status)
 }
 
-var ErrHttpAuthenticate = &HttpError{401, "Failed to authenticate"}
+var ErrHttpAuthenticate = &HttpError{401, "failed to authenticate"}
+var ErrHttpNotFound = &HttpError{404, "nothing listening on the endpoint"}
 
 func deliver(endpoint, user, pass string, delivery Deliverable) (io.Reader, error) {
 	xml := delivery.Xml()
@@ -41,6 +42,7 @@ func deliver(endpoint, user, pass string, delivery Deliverable) (io.Reader, erro
 	response, err := client.Do(request)
 
 	if err != nil {
+		println(err.Error())
 		return nil, err
 	}
 	defer response.Body.Close()
@@ -61,6 +63,9 @@ func deliver(endpoint, user, pass string, delivery Deliverable) (io.Reader, erro
 }
 
 func handleError(r *http.Response) error {
+	if r.StatusCode == 404 {
+		return ErrHttpNotFound
+	}
 	if r.StatusCode == 401 {
 		return ErrHttpAuthenticate
 	}

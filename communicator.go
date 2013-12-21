@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"github.com/dylanmei/packer-communicator-winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 	rpc "github.com/mitchellh/packer/packer/plugin"
