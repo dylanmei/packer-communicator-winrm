@@ -2,31 +2,19 @@ package winrm
 
 import (
 	"fmt"
+	"github.com/dylanmei/packer-communicator-winrm/winrm/winrmtest"
 	. "github.com/onsi/gomega"
 	"io"
 	"launchpad.net/xmlpath"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
-var mux *http.ServeMux
-
-func setup(t *testing.T) (string, func()) {
-	RegisterTestingT(t)
-
-	mux = http.NewServeMux()
-	server := httptest.NewServer(mux)
-	return server.URL, func() { server.Close() }
-}
-
 func Test_creating_a_shell(t *testing.T) {
-	url, teardown := setup(t)
-	defer teardown()
+	RegisterTestingT(t)
+	fixture := winrmtest.NewFixture()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		Expect(r.Method).To(Equal("POST"))
-		Expect(r.Header.Get("Content-Type")).To(ContainSubstring("application/soap+xml"))
+	fixture.HandleFunc(func(w http.ResponseWriter, r *http.Request) {
 		Expect(r.Header.Get("Authorization")).To(Equal("Basic dmFncmFudDp2YWdyYW50"))
 		fmt.Fprintf(w, `
             <Envelope>
@@ -38,22 +26,21 @@ func Test_creating_a_shell(t *testing.T) {
             </Envelope>`)
 	})
 
-	s, err := NewShell(url, "vagrant", "vagrant")
+	s, err := NewShell(fixture.Endpoint, "vagrant", "vagrant")
 
 	Expect(err).To(BeNil())
 	if err == nil {
-		Expect(s.Endpoint).To(Equal(url))
+		Expect(s.Endpoint).To(Equal(fixture.Endpoint))
 		Expect(s.Id).To(Equal("ABCXYZ"))
 		Expect(s.Owner).To(Equal("vagrant"))
 	}
 }
 
 func Test_deleting_a_shell(t *testing.T) {
-	url, teardown := setup(t)
-	defer teardown()
+	RegisterTestingT(t)
+	fixture := winrmtest.NewFixture()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		Expect(r.Method).To(Equal("POST"))
+	fixture.HandleFunc(func(w http.ResponseWriter, r *http.Request) {
 		Expect(r.Body).To(ContainXml("//Header/SelectorSet[Selector='ABCXYZ']"))
 		fmt.Fprintf(w, `
             <Envelope>
@@ -63,7 +50,7 @@ func Test_deleting_a_shell(t *testing.T) {
 
 	s := &Shell{
 		Id:       "ABCXYZ",
-		Endpoint: url,
+		Endpoint: fixture.Endpoint,
 	}
 
 	err := s.Delete()
@@ -71,14 +58,14 @@ func Test_deleting_a_shell(t *testing.T) {
 }
 
 func Test_authentication_failure(t *testing.T) {
-	url, teardown := setup(t)
-	defer teardown()
+	RegisterTestingT(t)
+	fixture := winrmtest.NewFixture()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	fixture.HandleFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
 	})
 
-	_, err := NewShell(url, "", "")
+	_, err := NewShell(fixture.Endpoint, "", "")
 	Expect(err).ToNot(BeNil())
 	Expect(err).To(BeAssignableToTypeOf((*HttpError)(nil)))
 }
