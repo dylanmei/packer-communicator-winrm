@@ -24,7 +24,7 @@ type xpathMatcher struct {
 func (matcher *xpathMatcher) Match(actual interface{}) (success bool, message string, err error) {
 	reader, ok := actual.(io.Reader)
 	if !ok {
-		return false, "", fmt.Errorf("ContainXml expects an io.Reader")
+		return false, "", fmt.Errorf("MatchXmlPath expects an io.Reader")
 	}
 
 	buffer, _ := ioutil.ReadAll(reader)

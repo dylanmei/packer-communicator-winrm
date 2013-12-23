@@ -16,13 +16,13 @@ func Test_creating_a_shell(t *testing.T) {
 	fixture.HandleFunc(func(w http.ResponseWriter, r *winrmtest.Request) {
 		Expect(r.Header.Get("Authorization")).To(Equal("Basic dmFncmFudDp2YWdyYW50"))
 		fmt.Fprintf(w, `
-            <Envelope>
-                <s:Body>
-                    <rsp:Shell>
-                        <rsp:ShellId>ABCXYZ</rsp:ShellId>
-                    </rsp:Shell>
-                </s:Body>
-            </Envelope>`)
+			<Envelope>
+				<s:Body>
+					<rsp:Shell>
+						<rsp:ShellId>ABCXYZ</rsp:ShellId>
+					</rsp:Shell>
+				</s:Body>
+			</Envelope>`)
 	})
 
 	s, err := NewShell(fixture.Endpoint, "vagrant", "vagrant")
@@ -43,13 +43,13 @@ func Test_creating_a_shell_command(t *testing.T) {
 		Expect(r).To(MatchXmlPath("//Header/SelectorSet[Selector='ABCXYZ']"))
 		Expect(r).To(MatchXmlPath("//Body/CommandLine[Command='foo bar']"))
 		fmt.Fprintf(w, `
-            <Envelope>
-                <s:Body>
-                    <rsp:CommandResponse>
-                        <rsp:CommandId>123789</rsp:CommandId>
-                    </rsp:CommandResponse>
-                </s:Body>
-            </Envelope>`)
+			<Envelope>
+				<s:Body>
+					<rsp:CommandResponse>
+						<rsp:CommandId>123789</rsp:CommandId>
+					</rsp:CommandResponse>
+				</s:Body>
+			</Envelope>`)
 	})
 
 	s := &Shell{
@@ -73,9 +73,9 @@ func Test_deleting_a_shell(t *testing.T) {
 	fixture.HandleFunc(func(w http.ResponseWriter, r *winrmtest.Request) {
 		Expect(r).To(MatchXmlPath("//Header/SelectorSet[Selector='ABCXYZ']"))
 		fmt.Fprintf(w, `
-            <Envelope>
-                <s:Body></s:Body>
-            </Envelope>`)
+			<Envelope>
+				<s:Body></s:Body>
+			</Envelope>`)
 	})
 
 	s := &Shell{

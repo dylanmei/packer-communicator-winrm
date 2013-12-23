@@ -30,7 +30,7 @@ A Packer *communicator* plugin must support the following functionality: Execute
 
 *not started*
 
-### Help
+#### Help
 
     ./packer-communicator-winrm help
 
