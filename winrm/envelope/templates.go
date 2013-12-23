@@ -121,7 +121,7 @@ const CreateCommandTemplate = `<?xml version="1.0" encoding="UTF-8"?>
   </env:Header>
   <env:Body>
     <rsp:CommandLine>
-      <rsp:Command>&quot;{{.CommandText}}&quot;</rsp:Command>
+      <rsp:Command>{{.CommandText}}</rsp:Command>
     </rsp:CommandLine>
   </env:Body>
 </env:Envelope>`

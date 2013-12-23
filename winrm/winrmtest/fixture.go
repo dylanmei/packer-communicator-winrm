@@ -18,10 +18,10 @@ func NewFixture() *Fixture {
 	return &Fixture{mux, server, server.URL}
 }
 
-func (f *Fixture) HandleFunc(handler func(w http.ResponseWriter, r *http.Request)) {
+func (f *Fixture) HandleFunc(handler func(w http.ResponseWriter, r *Request)) {
 	f.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if canHandle(r) {
-			handler(w, r)
+			handler(w, newRequest(r))
 		}
 
 		go f.server.Close()
