@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/mitchellh/packer/packer"
+	rpc "github.com/mitchellh/packer/packer/plugin"
 	"log"
 	"os"
 )
@@ -36,4 +37,13 @@ func main() {
 			rc.Wait()
 		},
 	})
+}
+
+func plugin() {
+	server, err := rpc.Server()
+	if err != nil {
+		panic(err)
+	}
+	server.RegisterCommunicator(new(Communicator))
+	server.Serve()
 }
