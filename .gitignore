@@ -6,3 +6,6 @@
 
 .ruby-version
 Gemfile*
+
+/.vagrant
+/Vagrantfile
