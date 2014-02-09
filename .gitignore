@@ -4,8 +4,5 @@
 /src
 /packer-*
 
-.ruby-version
-Gemfile*
-
 /.vagrant
 /Vagrantfile
