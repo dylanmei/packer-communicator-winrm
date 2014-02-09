@@ -35,12 +35,13 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
 
 	shell.Stdout = rc.Stdout
 	shell.Stderr = rc.Stderr
+	defer shell.Delete()
+
 	command, err := shell.NewCommand(rc.Command)
 	if err != nil {
 		return
 	}
 
-	defer shell.Delete()
 	output, err := command.Receive()
 
 	log.Printf("remote command exited with '%d': %s", output.ExitCode, rc.Command)
@@ -52,7 +53,15 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
 // contents coming from the given reader. This method will block until
 // it completes.
 func (c *Communicator) Upload(path string, r io.Reader) error {
-	panic("not implemented yet")
+	log.Printf("uploading file to [%s]", path)
+
+	shell, err := winrm.NewShell(c.endpoint, c.user, c.pass)
+	if err != nil {
+		return err
+	}
+
+	defer shell.Delete()
+	return upload(shell, path, r)
 }
 
 // UploadDir uploads the contents of a directory recursively to

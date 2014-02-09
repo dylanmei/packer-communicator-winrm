@@ -16,7 +16,8 @@ var pass = flag.String("pass", "vagrant", "user's password")
 
 // SOLO USAGE:
 //   ./packer-communicator-winrm help
-//   ./packer-communicator-winrm -user=vagrant -pass=vagrant run command-text
+//   ./packer-communicator-winrm -user=vagrant -pass=vagrant cmd command-text
+//   ./packer-communicator-winrm -user=vagrant -pass=vagrant file file-path
 // Set WINRM_DEBUG=1 for more output
 
 func main() {
@@ -34,14 +35,15 @@ func main() {
 }
 
 func standalone() {
-	command.On("run", "run a command", &RunCommand{})
+	command.On("cmd", "run a command", &RunCommand{})
+	command.On("file", "copy a file", &FileCommand{})
 	command.Parse()
 	command.Run()
 }
 
 type RunCommand struct{}
 
-func (cmd *RunCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
+func (r *RunCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	return fs
 }
 
@@ -61,4 +63,23 @@ func (r *RunCommand) Run(args []string) {
 	}
 
 	rc.Wait()
+}
+
+type FileCommand struct {
+	to   *string
+	from *string
+}
+
+func (f *FileCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	f.to = fs.String("to", "", "destination file path")
+	f.from = fs.String("from", "", "source file path")
+	return fs
+}
+
+func (f *FileCommand) Run(args []string) {
+	communicator := &Communicator{endpoint, *user, *pass}
+	err := communicator.Upload(*f.to, nil)
+	if err != nil {
+		log.Printf("unable to copy file: %s", err)
+	}
 }
