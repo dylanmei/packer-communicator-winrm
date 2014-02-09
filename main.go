@@ -14,12 +14,6 @@ const endpoint = "http://localhost:5985/wsman"
 var user = flag.String("user", "vagrant", "user to run as")
 var pass = flag.String("pass", "vagrant", "user's password")
 
-// SOLO USAGE:
-//   ./packer-communicator-winrm help
-//   ./packer-communicator-winrm -user=vagrant -pass=vagrant cmd command-text
-//   ./packer-communicator-winrm -user=vagrant -pass=vagrant file file-path
-// Set WINRM_DEBUG=1 for XML/SOAP output
-
 func main() {
 	args := os.Args[1:]
 	if len(args) != 0 {
