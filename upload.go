@@ -37,23 +37,23 @@ func upload(shell *winrm.Shell, path string, r io.Reader) (err error) {
 	log.Println("restoring file to:", path)
 
 	_, err = powershell(shell, fmt.Sprintf(`
-        $path = "%s"
-        $temp = "%s"
+		$path = "%s"
+		$temp = "%s"
 
-        $dir = [System.IO.Path]::GetDirectoryName($path)
-        if (-Not (Test-Path $dir)) {
-            mkdir $dir
-        } elseif (Test-Path $path) {
-            rm $path
-        }
+		$dir = [System.IO.Path]::GetDirectoryName($path)
+		if (-Not (Test-Path $dir)) {
+			mkdir $dir
+		} elseif (Test-Path $path) {
+			rm $path
+		}
 
-        $b64 = Get-Content $temp
-        $bytes = [System.Convert]::FromBase64String($b64)
+		$b64 = Get-Content $temp
+		$bytes = [System.Convert]::FromBase64String($b64)
 
-        $file = [System.IO.Path]::GetFullPath($path)
-        [System.IO.File]::WriteAllBytes($file, $bytes)
+		$file = [System.IO.Path]::GetFullPath($path)
+		[System.IO.File]::WriteAllBytes($file, $bytes)
  
-        del $temp
-    `, path, temp))
+		del $temp
+	`, path, temp))
 	return
 }
