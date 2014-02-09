@@ -14,25 +14,27 @@ This is a work in progress. *It is not a usable Packer plugin yet*. However, whi
 
 A Packer *communicator* plugin must support the following functionality: Execute a shell command, upload a file, download a file, and upload a directory.
 
+#### Help
+
+    alias pcw=`pwd`/packer-communicator-winrm
+    pcw help
+
 #### Executing a shell command
 
-    ./packer-communicator-winrm cmd "powershell Write-Host 'Hello' (Get-WmiObject -class Win32_OperatingSystem).Caption"
+    pcw cmd "powershell Write-Host 'Hello' (Get-WmiObject -class Win32_OperatingSystem).Caption"
 
 #### Uploading a file
+
+    pcw file -from=./README.md -to=C:\\Windows\\Temp\\README.md
+    pcw cmd "type C:\\Windows\\Temp\\README.md"
+
+#### Uploading a directory
 
 *not started*
 
 #### Downloading a file
 
 *not started*
-
-#### Uploading a directory
-
-*not started*
-
-#### Help
-
-    ./packer-communicator-winrm help
 
 ### Props
 

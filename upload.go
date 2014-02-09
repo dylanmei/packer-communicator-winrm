@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/dylanmei/packer-communicator-winrm/winrm"
 	"github.com/mitchellh/packer/common/uuid"
@@ -9,37 +10,45 @@ import (
 )
 
 func upload(shell *winrm.Shell, path string, r io.Reader) (err error) {
-	_, err = powershell(shell, fmt.Sprintf(`
-        if (Test-Path "%s") {
-            rm "%s"
-        }`, path, path))
+
+	temp, err := cmd(shell, fmt.Sprintf(
+		`echo %%TEMP%%\packer-%s.tmp`, uuid.TimeOrderedUUID()))
 
 	if err != nil {
 		return
 	}
 
-	temp, err := cmd(shell,
-		fmt.Sprintf("echo %%TEMP%%\\packer-%s.tmp", uuid.TimeOrderedUUID()))
+	log.Printf("transfering file to", temp)
 
-	if err != nil {
-		return
+	bytes := make([]byte, 8000-len(temp))
+	for {
+		read, _ := r.Read(bytes)
+		if read == 0 {
+			break
+		}
+		_, err = cmd(shell, fmt.Sprintf(
+			`echo %s >> %s`, base64.StdEncoding.EncodeToString(bytes[:read]), temp))
+
+		if err != nil {
+			return
+		}
 	}
 
-	// Base64.encode64(IO.binread(from)).gsub("\n",'').chars.to_a.each_slice(8000-file_name.size) do |chunk|
-	//   out = cmd("echo #{chunk.join} >> \"#{file_name}\"")
-	// end
-
-	log.Printf("writing to temporary file [%s]", temp)
-	_, err = cmd(shell, fmt.Sprintf("echo aABlAGwAbABvACAAdwBvAHIAbABkAA== >> \"%s\"", temp))
-
-	log.Printf("restoring file to [%s]", path)
+	log.Printf("restoring file to", path)
 
 	_, err = powershell(shell, fmt.Sprintf(`
         $path = "%s"
-        $dir = [System.IO.Path]::GetDirectoryName($path)
-        if (-Not (Test-Path $dir)) { mkdir $dir }
- 
         $temp = "%s"
+
+        if (Test-Path $path) {
+            rm $path
+        }
+
+        $dir = [System.IO.Path]::GetDirectoryName($path)
+        if (-Not (Test-Path $dir)) {
+            mkdir $dir
+        }
+
         $b64 = Get-Content $temp
         $bytes = [System.Convert]::FromBase64String($b64)
 
