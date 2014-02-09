@@ -18,7 +18,7 @@ func upload(shell *winrm.Shell, path string, r io.Reader) (err error) {
 		return
 	}
 
-	log.Printf("transfering file to", temp)
+	log.Println("transfering encoded bytes to:", temp)
 
 	bytes := make([]byte, 8000-len(temp))
 	for {
@@ -34,19 +34,17 @@ func upload(shell *winrm.Shell, path string, r io.Reader) (err error) {
 		}
 	}
 
-	log.Printf("restoring file to", path)
+	log.Println("restoring file to:", path)
 
 	_, err = powershell(shell, fmt.Sprintf(`
         $path = "%s"
         $temp = "%s"
 
-        if (Test-Path $path) {
-            rm $path
-        }
-
         $dir = [System.IO.Path]::GetDirectoryName($path)
         if (-Not (Test-Path $dir)) {
             mkdir $dir
+        } elseif (Test-Path $path) {
+            rm $path
         }
 
         $b64 = Get-Content $temp

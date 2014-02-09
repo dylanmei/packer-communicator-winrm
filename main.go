@@ -18,7 +18,7 @@ var pass = flag.String("pass", "vagrant", "user's password")
 //   ./packer-communicator-winrm help
 //   ./packer-communicator-winrm -user=vagrant -pass=vagrant cmd command-text
 //   ./packer-communicator-winrm -user=vagrant -pass=vagrant file file-path
-// Set WINRM_DEBUG=1 for more output
+// Set WINRM_DEBUG=1 for XML/SOAP output
 
 func main() {
 	args := os.Args[1:]
