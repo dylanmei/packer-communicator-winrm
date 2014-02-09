@@ -13,7 +13,7 @@ func cmd(shell *winrm.Shell, command string) (string, error) {
 	shell.Stdout = stdout
 	shell.Stderr = stderr
 
-	log.Println("starting winrm command:", command)
+	log.Println("starting cmd:", command)
 
 	c, err := shell.NewCommand(command)
 
@@ -26,7 +26,7 @@ func cmd(shell *winrm.Shell, command string) (string, error) {
 	}
 
 	if stderr.Len() > 0 {
-		log.Println("winrm stderr: %s", stderr.String())
+		log.Println("cmd stderr: %s", stderr.String())
 	}
 
 	return strings.Trim(stdout.String(), " \r\n"), nil

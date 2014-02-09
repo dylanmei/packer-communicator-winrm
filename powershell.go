@@ -19,7 +19,7 @@ func powershell(shell *winrm.Shell, command string) (string, error) {
 		bytes = append(bytes, c, 0)
 	}
 
-	log.Println("starting winrm command: powershell -Command", command)
+	log.Println("starting powershell: powershell -Command", command)
 
 	text := "powershell -NoProfile -EncodedCommand " +
 		base64.StdEncoding.EncodeToString(bytes)
@@ -34,7 +34,7 @@ func powershell(shell *winrm.Shell, command string) (string, error) {
 	}
 
 	if stderr.Len() > 0 {
-		log.Println("winrm stderr: %s", stderr.String())
+		log.Println("powershell stderr: %s", stderr.String())
 	}
 
 	return strings.Trim(stdout.String(), " \r\n"), nil

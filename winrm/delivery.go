@@ -31,7 +31,7 @@ var ErrHttpNotFound = &HttpError{404, "nothing listening on the endpoint"}
 func deliver(endpoint, user, pass string, delivery Deliverable) (io.Reader, error) {
 	xml := delivery.Xml()
 	if os.Getenv("WINRM_DEBUG") != "" {
-		log.Println("delivering", xml)
+		log.Println("winrm: sending", xml)
 	}
 
 	request, _ := http.NewRequest("POST", endpoint, bytes.NewBufferString(xml))
@@ -56,7 +56,7 @@ func deliver(endpoint, user, pass string, delivery Deliverable) (io.Reader, erro
 	}
 
 	if os.Getenv("WINRM_DEBUG") != "" {
-		log.Println("receiving", string(body))
+		log.Println("winrm: receiving", string(body))
 	}
 
 	return bytes.NewReader(body), nil
@@ -80,7 +80,7 @@ func handleError(r *http.Response) error {
 func handleFault(r *http.Response) error {
 	body, _ := ioutil.ReadAll(r.Body)
 	if os.Getenv("WINRM_DEBUG") != "" {
-		log.Println("faulting", string(body))
+		log.Println("winrm: fault", string(body))
 	}
 
 	buffer := bytes.NewBuffer(body)
