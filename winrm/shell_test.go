@@ -3,18 +3,17 @@ package winrm
 import (
 	"fmt"
 	"github.com/dylanmei/packer-communicator-winrm/winrm/winrmtest"
-	. "github.com/dylanmei/packer-communicator-winrm/winrm/winrmtest/matchers"
-	. "github.com/onsi/gomega"
 	"net/http"
 	"testing"
 )
 
 func Test_creating_a_shell(t *testing.T) {
-	RegisterTestingT(t)
 	fixture := winrmtest.NewFixture()
 
 	fixture.HandleFunc(func(w http.ResponseWriter, r *winrmtest.Request) {
-		Expect(r.Header.Get("Authorization")).To(Equal("Basic dmFncmFudDp2YWdyYW50"))
+		if r.Header.Get("Authorization") != "Basic dmFncmFudDp2YWdyYW50" {
+			t.Fatal("bad authorization")
+		}
 		fmt.Fprintf(w, `
 			<Envelope>
 				<s:Body>
@@ -27,26 +26,39 @@ func Test_creating_a_shell(t *testing.T) {
 
 	s, err := NewShell(fixture.Endpoint, "vagrant", "vagrant")
 
-	Expect(err).To(BeNil())
-	if err == nil {
-		Expect(s.Endpoint).To(Equal(fixture.Endpoint))
-		Expect(s.Id).To(Equal("ABCXYZ"))
-		Expect(s.Owner).To(Equal("vagrant"))
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if s.Endpoint != fixture.Endpoint {
+		t.Fatal("bad endpoint:", s.Endpoint)
+	}
+
+	if s.Id != "ABCXYZ" {
+		t.Fatal("bad shell id:", s.Id)
+	}
+
+	if s.Owner != "vagrant" {
+		t.Fatal("bad owner:", s.Owner)
 	}
 }
 
 func Test_creating_a_shell_command(t *testing.T) {
-	RegisterTestingT(t)
 	fixture := winrmtest.NewFixture()
 
 	fixture.HandleFunc(func(w http.ResponseWriter, r *winrmtest.Request) {
-		Expect(r).To(MatchXmlPath("//Header/SelectorSet[Selector='ABCXYZ']"))
-		Expect(r).To(MatchXmlPath("//Body/CommandLine[Command='foo bar']"))
+		if r.XmlString("//Header/SelectorSet[Selector='ABCXYZ']") == "" {
+			t.Fatal("bad request: selector")
+		}
+		if r.XmlString("//Body/CommandLine[Command='foo bar']") == "" {
+			t.Fatal("bad request: command")
+		}
+
 		fmt.Fprintf(w, `
 			<Envelope>
 				<s:Body>
 					<rsp:CommandResponse>
-						<rsp:CommandId>123789</rsp:CommandId>
+						<rsp:CommandId>123456</rsp:CommandId>
 					</rsp:CommandResponse>
 				</s:Body>
 			</Envelope>`)
@@ -59,19 +71,26 @@ func Test_creating_a_shell_command(t *testing.T) {
 
 	c, err := s.NewCommand("foo bar")
 
-	Expect(err).To(BeNil())
-	if err == nil {
-		Expect(c.Id).To(Equal("123789"))
-		Expect(c.CommandText).To(Equal("foo bar"))
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if c.Id != "123456" {
+		t.Fatal("bad command id:", c.Id)
+	}
+
+	if c.CommandText != "foo bar" {
+		t.Fatal("bad command text:", c.CommandText)
 	}
 }
 
 func Test_deleting_a_shell(t *testing.T) {
-	RegisterTestingT(t)
 	fixture := winrmtest.NewFixture()
 
 	fixture.HandleFunc(func(w http.ResponseWriter, r *winrmtest.Request) {
-		Expect(r).To(MatchXmlPath("//Header/SelectorSet[Selector='ABCXYZ']"))
+		if r.XmlString("//Header/SelectorSet[Selector='ABCXYZ']") == "" {
+			t.Fatal("bad request: selector")
+		}
 		fmt.Fprintf(w, `
 			<Envelope>
 				<s:Body></s:Body>
@@ -84,11 +103,13 @@ func Test_deleting_a_shell(t *testing.T) {
 	}
 
 	err := s.Delete()
-	Expect(err).To(BeNil())
+
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
 }
 
 func Test_authentication_failure(t *testing.T) {
-	RegisterTestingT(t)
 	fixture := winrmtest.NewFixture()
 
 	fixture.HandleFunc(func(w http.ResponseWriter, r *winrmtest.Request) {
@@ -96,6 +117,17 @@ func Test_authentication_failure(t *testing.T) {
 	})
 
 	_, err := NewShell(fixture.Endpoint, "", "")
-	Expect(err).ToNot(BeNil())
-	Expect(err).To(BeAssignableToTypeOf((*HttpError)(nil)))
+
+	if err == nil {
+		t.Fatal("bad: no error")
+	}
+
+	herr, ok := err.(*HttpError)
+	if !ok {
+		t.Fatal("bad: not an http error")
+	}
+
+	if herr.StatusCode != 401 {
+		t.Fatal("bad: http status code", herr.StatusCode)
+	}
 }
