@@ -4,9 +4,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/dylanmei/packer-communicator-winrm/winrm/envelope"
+	"github.com/masterzen/xmlpath"
 	"github.com/mitchellh/packer/common/uuid"
 	"io"
-	"launchpad.net/xmlpath"
 	"strconv"
 	"strings"
 )

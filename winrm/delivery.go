@@ -3,9 +3,9 @@ package winrm
 import (
 	"bytes"
 	"fmt"
+	"github.com/masterzen/xmlpath"
 	"io"
 	"io/ioutil"
-	"launchpad.net/xmlpath"
 	"log"
 	"net/http"
 	"os"

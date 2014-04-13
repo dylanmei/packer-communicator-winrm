@@ -3,9 +3,9 @@ package winrm
 import (
 	"errors"
 	"github.com/dylanmei/packer-communicator-winrm/winrm/envelope"
+	"github.com/masterzen/xmlpath"
 	"github.com/mitchellh/packer/common/uuid"
 	"io"
-	"launchpad.net/xmlpath"
 	"log"
 )
 
