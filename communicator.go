@@ -1,11 +1,14 @@
 package main
 
 import (
-	lwinrm "github.com/dylanmei/packer-communicator-winrm/winrm"
+	"encoding/base64"
+	"errors"
+	"fmt"
 	"github.com/masterzen/winrm/winrm"
+	"github.com/mitchellh/packer/common/uuid"
 	"github.com/mitchellh/packer/packer"
 	"io"
-	"log"
+	"strings"
 )
 
 // A Communicator is the interface used to communicate with the machine
@@ -30,13 +33,13 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
 	client := winrm.NewClient(c.host, c.user, c.pass)
 	shell, err := client.CreateShell()
 	if err != nil {
-		return err
+		return
 	}
 	defer shell.Close()
 
 	cmd, err := shell.Execute(rc.Command)
 	if err != nil {
-		return err
+		return
 	}
 
 	go io.Copy(rc.Stdout, cmd.Stdout)
@@ -44,22 +47,65 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
 
 	cmd.Wait()
 	rc.SetExited(cmd.ExitCode())
-	return nil
+	return
 }
 
 // Upload uploads a file to the machine to the given path with the
 // contents coming from the given reader. This method will block until
 // it completes.
-func (c *Communicator) Upload(path string, r io.Reader) error {
-	log.Printf("uploading file to [%s]", path)
+func (c *Communicator) Upload(path string, r io.Reader) (err error) {
 
-	shell, err := lwinrm.NewShell(c.host, c.user, c.pass)
+	client := winrm.NewClient(c.host, c.user, c.pass)
+	shell, err := client.CreateShell()
 	if err != nil {
-		return err
+		return
+	}
+	defer shell.Close()
+
+	temp, err := runCommand(client, fmt.Sprintf(
+		`echo %%TEMP%%\packer-%s.tmp`, uuid.TimeOrderedUUID()))
+
+	if err != nil {
+		return
 	}
 
-	defer shell.Delete()
-	return upload(shell, path, r)
+	temp = strings.TrimSpace(temp)
+	bytes := make([]byte, 8000-len(temp))
+	for {
+		read, _ := r.Read(bytes)
+		if read == 0 {
+			break
+		}
+
+		_, err = runCommand(client, fmt.Sprintf(
+			`echo %s >> %s`, base64.StdEncoding.EncodeToString(bytes[:read]), temp))
+
+		if err != nil {
+			return
+		}
+	}
+
+	_, err = runPowershell(client, fmt.Sprintf(`
+		$path = "%s"
+		$temp = "%s"
+
+		$dir = [System.IO.Path]::GetDirectoryName($path)
+		if (-Not (Test-Path $dir)) {
+			mkdir $dir
+		} elseif (Test-Path $path) {
+			rm $path
+		}
+
+		$lines = Get-Content $temp
+		$value = [string]::join("",$lines)
+		$bytes = [System.Convert]::FromBase64String($value)
+
+		$file = [System.IO.Path]::GetFullPath($path)
+		[System.IO.File]::WriteAllBytes($file, $bytes)
+ 
+		del $temp
+	`, path, temp))
+	return
 }
 
 // UploadDir uploads the contents of a directory recursively to
@@ -79,4 +125,30 @@ func (c *Communicator) UploadDir(dst string, src string, exclude []string) error
 // block until it completes.
 func (c *Communicator) Download(path string, w io.Writer) error {
 	panic("not implemented yet")
+}
+
+func runCommand(client *winrm.Client, text string) (string, error) {
+	stdout, stderr, err := client.RunWithString(text, "")
+
+	if err != nil {
+		return "", err
+	}
+
+	if stderr != "" {
+		return "", errors.New("Error running command on guest: " + stderr)
+	}
+
+	return stdout, nil
+}
+
+func runPowershell(client *winrm.Client, text string) (string, error) {
+	var bytes []byte
+	for _, c := range []byte(text) {
+		bytes = append(bytes, c, 0)
+	}
+
+	encoded := "powershell -NoProfile -EncodedCommand " +
+		base64.StdEncoding.EncodeToString(bytes)
+
+	return runCommand(client, encoded)
 }
