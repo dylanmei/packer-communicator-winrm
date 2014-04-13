@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/dylanmei/packer-communicator-winrm/winrm"
+	lwinrm "github.com/dylanmei/packer-communicator-winrm/winrm"
+	"github.com/masterzen/winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 	"io"
 	"log"
@@ -14,9 +15,9 @@ import (
 // Communicators must be safe for concurrency, meaning multiple calls to
 // Start or any other method may be called at the same time.
 type Communicator struct {
-	endpoint string
-	user     string
-	pass     string
+	host string
+	user string
+	pass string
 }
 
 // Start takes a RemoteCmd and starts it. The RemoteCmd must not be
@@ -25,28 +26,25 @@ type Communicator struct {
 // is started. It does not wait for the command to complete. The
 // RemoteCmd.Exited field should be used for this.
 func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
-	log.Println("creating new winrm shell")
-	shell, err := winrm.NewShell(c.endpoint, c.user, c.pass)
+
+	client := winrm.NewClient(c.host, c.user, c.pass)
+	shell, err := client.CreateShell()
 	if err != nil {
-		return
+		return err
+	}
+	defer shell.Close()
+
+	cmd, err := shell.Execute(rc.Command)
+	if err != nil {
+		return err
 	}
 
-	log.Printf("starting remote command: %s", rc.Command)
+	go io.Copy(rc.Stdout, cmd.Stdout)
+	go io.Copy(rc.Stderr, cmd.Stderr)
 
-	shell.Stdout = rc.Stdout
-	shell.Stderr = rc.Stderr
-	defer shell.Delete()
-
-	command, err := shell.NewCommand(rc.Command)
-	if err != nil {
-		return
-	}
-
-	output, err := command.Receive()
-
-	log.Printf("remote command exited with '%d': %s", output.ExitCode, rc.Command)
-	rc.SetExited(output.ExitCode)
-	return
+	cmd.Wait()
+	rc.SetExited(cmd.ExitCode())
+	return nil
 }
 
 // Upload uploads a file to the machine to the given path with the
@@ -55,7 +53,7 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
 func (c *Communicator) Upload(path string, r io.Reader) error {
 	log.Printf("uploading file to [%s]", path)
 
-	shell, err := winrm.NewShell(c.endpoint, c.user, c.pass)
+	shell, err := lwinrm.NewShell(c.host, c.user, c.pass)
 	if err != nil {
 		return err
 	}
