@@ -29,8 +29,8 @@ func main() {
 }
 
 func standalone() {
-	command.On("cmd", "run a command", &RunCommand{})
-	command.On("file", "copy a file", &FileCommand{})
+	command.On("cmd", "run a command", &RunCommand{}, []string{})
+	command.On("file", "copy a file", &FileCommand{}, []string{})
 	command.Parse()
 	command.Run()
 }
