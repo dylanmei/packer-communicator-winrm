@@ -12,8 +12,6 @@ This is a work in progress. *It is not a usable Packer plugin yet*. However, whi
 
 A Packer *communicator* plugin supports the following functionality: Execute a shell command, upload a file, download a file, and upload a directory.
 
-Set `WINRM_DEBUG=1` for verbose XML/SOAP output.
-
 #### Help
 
     alias pcw=`pwd`/packer-communicator-winrm
