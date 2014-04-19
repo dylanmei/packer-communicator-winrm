@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"github.com/mitchellh/packer/common/uuid"
 	"github.com/mitchellh/packer/packer"
 	"io"
+	"io/ioutil"
 	"strings"
 )
 
@@ -62,30 +64,30 @@ func (c *Communicator) Upload(path string, r io.Reader) (err error) {
 	}
 	defer shell.Close()
 
-	temp, err := runCommand(client, fmt.Sprintf(
+	temp, err := runCommand(shell, fmt.Sprintf(
 		`echo %%TEMP%%\packer-%s.tmp`, uuid.TimeOrderedUUID()))
 
 	if err != nil {
 		return
 	}
 
-	temp = strings.TrimSpace(temp)
-	bytes := make([]byte, 8000-len(temp))
-	for {
-		read, _ := r.Read(bytes)
-		if read == 0 {
-			break
-		}
+	bytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
 
-		_, err = runCommand(client, fmt.Sprintf(
-			`echo %s >> %s`, base64.StdEncoding.EncodeToString(bytes[:read]), temp))
+	temp = strings.TrimSpace(temp)
+	for _, chunk := range encodeChunks(bytes, 8000-len(temp)) {
+
+		_, err = runCommand(shell,
+			fmt.Sprintf(`echo %s >> %s`, chunk, temp))
 
 		if err != nil {
 			return
 		}
 	}
 
-	_, err = runPowershell(client, fmt.Sprintf(`
+	_, err = runPowershell(shell, fmt.Sprintf(`
 		$path = "%s"
 		$temp = "%s"
 
@@ -102,7 +104,7 @@ func (c *Communicator) Upload(path string, r io.Reader) (err error) {
 
 		$file = [System.IO.Path]::GetFullPath($path)
 		[System.IO.File]::WriteAllBytes($file, $bytes)
- 
+
 		del $temp
 	`, path, temp))
 	return
@@ -127,21 +129,27 @@ func (c *Communicator) Download(path string, w io.Writer) error {
 	panic("not implemented yet")
 }
 
-func runCommand(client *winrm.Client, text string) (string, error) {
-	stdout, stderr, err := client.RunWithString(text, "")
+func runCommand(shell *winrm.Shell, text string) (string, error) {
+	cmd, err := shell.Execute(text)
 
 	if err != nil {
 		return "", err
 	}
 
-	if stderr != "" {
-		return "", errors.New("Error running command on guest: " + stderr)
+	var stdout, stderr bytes.Buffer
+	go io.Copy(&stdout, cmd.Stdout)
+	go io.Copy(&stderr, cmd.Stderr)
+
+	cmd.Wait()
+
+	if stderr.Len() > 0 {
+		return "", errors.New("Error running command on guest: " + stderr.String())
 	}
 
-	return stdout, nil
+	return stdout.String(), nil
 }
 
-func runPowershell(client *winrm.Client, text string) (string, error) {
+func runPowershell(shell *winrm.Shell, text string) (string, error) {
 	var bytes []byte
 	for _, c := range []byte(text) {
 		bytes = append(bytes, c, 0)
@@ -150,5 +158,24 @@ func runPowershell(client *winrm.Client, text string) (string, error) {
 	encoded := "powershell -NoProfile -EncodedCommand " +
 		base64.StdEncoding.EncodeToString(bytes)
 
-	return runCommand(client, encoded)
+	return runCommand(shell, encoded)
+}
+
+func encodeChunks(bytes []byte, chunkSize int) []string {
+	text := base64.StdEncoding.EncodeToString(bytes)
+	reader := strings.NewReader(text)
+
+	var chunks []string
+	chunk := make([]byte, chunkSize)
+
+	for {
+		n, _ := reader.Read(chunk)
+		if n == 0 {
+			break
+		}
+
+		chunks = append(chunks, string(chunk[:n]))
+	}
+
+	return chunks
 }
