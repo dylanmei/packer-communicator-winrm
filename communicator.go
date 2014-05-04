@@ -30,18 +30,18 @@ type Communicator struct {
 // Start again. The Start method returns immediately once the command
 // is started. It does not wait for the command to complete. The
 // RemoteCmd.Exited field should be used for this.
-func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
+func (c *Communicator) Start(rc *packer.RemoteCmd) error {
 
 	client := winrm.NewClient(c.host, c.user, c.pass)
 	shell, err := client.CreateShell()
 	if err != nil {
-		return
+		return err
 	}
 	defer shell.Close()
 
 	cmd, err := shell.Execute(rc.Command)
 	if err != nil {
-		return
+		return err
 	}
 
 	go io.Copy(rc.Stdout, cmd.Stdout)
@@ -49,7 +49,8 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) (err error) {
 
 	cmd.Wait()
 	rc.SetExited(cmd.ExitCode())
-	return
+
+	return nil
 }
 
 // Upload uploads a file to the machine to the given path with the
