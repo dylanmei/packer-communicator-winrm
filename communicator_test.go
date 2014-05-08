@@ -2,10 +2,11 @@ package main
 
 import (
 	"bytes"
-	"github.com/masterzen/winrm/winrmtest"
-	"github.com/mitchellh/packer/packer"
 	"io"
 	"testing"
+
+	"github.com/masterzen/winrm/winrmtest"
+	"github.com/mitchellh/packer/packer"
 )
 
 func Test_running_a_command(t *testing.T) {
@@ -13,7 +14,7 @@ func Test_running_a_command(t *testing.T) {
 	defer h.Close()
 
 	h.CommandFunc("echo tacos", func(out, err io.Writer) int {
-		out.Write([]byte("test"))
+		out.Write([]byte("tacos"))
 		return 0
 	})
 
