@@ -12,25 +12,41 @@ func Test_running_a_command(t *testing.T) {
 	h := winrmtest.NewHost()
 	defer h.Close()
 
-	h.Command("dir C:\\Temp", func(out, err io.Writer) int {
+	h.CommandFunc("echo tacos", func(out, err io.Writer) int {
 		out.Write([]byte("test"))
 		return 0
 	})
 
-	comm := &Communicator{*host, *user, *pass}
+	stdout := bytes.NewBuffer(make([]byte, 0))
+	stderr := bytes.NewBuffer(make([]byte, 0))
 	rc := &packer.RemoteCmd{
-		Command: "dir C:\\Temp",
-		Stdout:  bytes.NewBuffer(make([]byte, 0)),
-		Stderr:  bytes.NewBuffer(make([]byte, 0)),
+		Command: "echo tacos",
+		Stdout:  stdout,
+		Stderr:  stderr,
+	}
+
+	comm := &Communicator{
+		host: h.Hostname,
+		port: h.Port,
 	}
 
 	err := comm.Start(rc)
-	rc.Wait()
 
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
+
+	rc.Wait()
+
 	if rc.ExitStatus != 0 {
-		t.Errorf("Expected ExitStatus 0, found %d", rc.ExitStatus)
+		t.Errorf(`expected rc.ExitStatus=0 but was %d`, rc.ExitStatus)
+	}
+
+	if stderr.String() != "" {
+		t.Errorf(`expected sterr="" but was "%s"`, stderr)
+	}
+
+	if stdout.String() != "tacos" {
+		t.Errorf(`expected stdout=tacos but was "%s"`, stdout)
 	}
 }

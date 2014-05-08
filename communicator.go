@@ -5,12 +5,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/masterzen/winrm/winrm"
-	"github.com/mitchellh/packer/common/uuid"
-	"github.com/mitchellh/packer/packer"
 	"io"
 	"io/ioutil"
 	"strings"
+
+	"github.com/masterzen/winrm/winrm"
+	"github.com/mitchellh/packer/common/uuid"
+	"github.com/mitchellh/packer/packer"
 )
 
 // A Communicator is the interface used to communicate with the machine
@@ -21,6 +22,7 @@ import (
 // Start or any other method may be called at the same time.
 type Communicator struct {
 	host string
+	port int
 	user string
 	pass string
 }
@@ -31,8 +33,7 @@ type Communicator struct {
 // is started. It does not wait for the command to complete. The
 // RemoteCmd.Exited field should be used for this.
 func (c *Communicator) Start(rc *packer.RemoteCmd) error {
-
-	client := winrm.NewClient(c.host, c.user, c.pass)
+	client := winrm.NewClient(&winrm.Endpoint{c.host, c.port}, c.user, c.pass)
 	shell, err := client.CreateShell()
 	if err != nil {
 		return err
@@ -44,11 +45,13 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) error {
 		return err
 	}
 
+	//	go func() {
 	go io.Copy(rc.Stdout, cmd.Stdout)
 	go io.Copy(rc.Stderr, cmd.Stderr)
 
 	cmd.Wait()
 	rc.SetExited(cmd.ExitCode())
+	//	}()
 
 	return nil
 }
@@ -58,7 +61,7 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) error {
 // it completes.
 func (c *Communicator) Upload(path string, r io.Reader) (err error) {
 
-	client := winrm.NewClient(c.host, c.user, c.pass)
+	client := winrm.NewClient(&winrm.Endpoint{c.host, c.port}, c.user, c.pass)
 	shell, err := client.CreateShell()
 	if err != nil {
 		return

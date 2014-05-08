@@ -10,6 +10,7 @@ import (
 )
 
 var host = flag.String("host", "localhost", "host machine")
+var port = flag.Int("port", 5985, "host port")
 var user = flag.String("user", "vagrant", "user to run as")
 var pass = flag.String("pass", "vagrant", "user's password")
 
@@ -42,7 +43,7 @@ func (r *RunCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 
 func (r *RunCommand) Run(args []string) {
 	command := args[0]
-	communicator := &Communicator{*host, *user, *pass}
+	communicator := &Communicator{*host, *port, *user, *pass}
 	rc := &packer.RemoteCmd{
 		Command: command,
 		Stdout:  os.Stdout,
@@ -70,7 +71,7 @@ func (f *FileCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (f *FileCommand) Run(args []string) {
-	communicator := &Communicator{*host, *user, *pass}
+	communicator := &Communicator{*host, *port, *user, *pass}
 
 	_, err := os.Stat(*f.from)
 	if err != nil {
