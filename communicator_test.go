@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/masterzen/winrm/winrmtest"
+	"github.com/dylanmei/winrmtest"
 	"github.com/mitchellh/packer/packer"
 )
 
