@@ -83,7 +83,7 @@ func (f *FileCommand) Run(args []string) {
 		log.Panicln("unable to open file", err.Error())
 	}
 
-	err = communicator.Upload(*f.to, file)
+	err = communicator.Upload(*f.to, file, nil)
 	if err != nil {
 		log.Printf("unable to copy file: %s", err)
 	}

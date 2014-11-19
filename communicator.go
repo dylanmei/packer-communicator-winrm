@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/masterzen/winrm/winrm"
@@ -59,7 +60,7 @@ func (c *Communicator) Start(rc *packer.RemoteCmd) error {
 // Upload uploads a file to the machine to the given path with the
 // contents coming from the given reader. This method will block until
 // it completes.
-func (c *Communicator) Upload(path string, r io.Reader) (err error) {
+func (c *Communicator) Upload(path string, r io.Reader, ignored *os.FileInfo) (err error) {
 
 	client := winrm.NewClient(&winrm.Endpoint{c.host, c.port}, c.user, c.pass)
 	shell, err := client.CreateShell()
