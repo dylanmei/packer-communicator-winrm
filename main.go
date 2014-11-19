@@ -73,7 +73,7 @@ func (f *FileCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 func (f *FileCommand) Run(args []string) {
 	communicator := &Communicator{*host, *port, *user, *pass}
 
-	_, err := os.Stat(*f.from)
+	info, err := os.Stat(*f.from)
 	if err != nil {
 		log.Panicln("unable to stat file", err.Error())
 	}
@@ -83,7 +83,7 @@ func (f *FileCommand) Run(args []string) {
 		log.Panicln("unable to open file", err.Error())
 	}
 
-	err = communicator.Upload(*f.to, file)
+	err = communicator.Upload(*f.to, file, &info)
 	if err != nil {
 		log.Printf("unable to copy file: %s", err)
 	}
