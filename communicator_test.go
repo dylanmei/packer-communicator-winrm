@@ -10,10 +10,10 @@ import (
 )
 
 func Test_running_a_command(t *testing.T) {
-	h := winrmtest.NewHost()
-	defer h.Close()
+	r := winrmtest.NewRemote()
+	defer r.Close()
 
-	h.CommandFunc("echo tacos", func(out, err io.Writer) int {
+	r.CommandFunc("echo tacos", func(out, err io.Writer) int {
 		out.Write([]byte("tacos"))
 		return 0
 	})
@@ -27,8 +27,8 @@ func Test_running_a_command(t *testing.T) {
 	}
 
 	comm := &Communicator{
-		host: h.Hostname,
-		port: h.Port,
+		host: r.Host,
+		port: r.Port,
 	}
 
 	err := comm.Start(rc)
