@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/mefellows/winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 	rpc "github.com/mitchellh/packer/packer/plugin"
 	"github.com/rakyll/command"
@@ -43,7 +44,8 @@ func (r *RunCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 
 func (r *RunCommand) Run(args []string) {
 	command := args[0]
-	communicator := &Communicator{*host, *port, *user, *pass}
+	// TODO: set the correct timeout or defaults or Config it
+	communicator, _ := New(&winrm.Endpoint{*host, *port}, *user, *pass, 500)
 	rc := &packer.RemoteCmd{
 		Command: command,
 		Stdout:  os.Stdout,
@@ -71,7 +73,7 @@ func (f *FileCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (f *FileCommand) Run(args []string) {
-	communicator := &Communicator{*host, *port, *user, *pass}
+	communicator, _ := New(&winrm.Endpoint{*host, *port}, *user, *pass, 500)
 
 	_, err := os.Stat(*f.from)
 	if err != nil {
