@@ -25,5 +25,5 @@ _testmain.go
 
 *.coverprofile
 *.cov
-./pwc
-./packer-communicator-winrm
+pwc
+packer-communicator-winrm
