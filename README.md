@@ -6,7 +6,8 @@ A [Packer](http://www.packer.io/) communicator plugin for interacting with machi
 
 This is a work in progress. *It is not a usable Packer plugin yet*. However, while the kinks are being worked out it is also a stand-alone command-line application.
 
-[![wercker status](https://app.wercker.com/status/c702a1133a8359cc8830ad60487ee751/m "wercker status")](https://app.wercker.com/project/bykey/c702a1133a8359cc8830ad60487ee751)
+[![Build Status](https://travis-ci.org/mefellows/packer-communicator-winrm.svg?branch=master)](https://travis-ci.org/mefellows/packer-communicator-winrm)
+[![Coverage Status](https://coveralls.io/repos/mefellows/packer-communicator-winrm/badge.png?branch=master)](https://coveralls.io/r/mefellows/packer-communicator-winrm?branch=master)
 
 ### Usage
 
