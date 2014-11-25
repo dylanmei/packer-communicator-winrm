@@ -1,8 +1,2 @@
-.DS_Store
-/bin
-/pkg
-/src
-/packer-*
-
-/.vagrant
-/Vagrantfile
+pwc
+packer-communicator-winrm

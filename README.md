@@ -28,7 +28,8 @@ A Packer *communicator* plugin supports the following functionality: Execute a s
 
 #### Uploading a directory
 
-*not started*
+	pcw dir -from="~/cookbooks/" -to="c:\\Windows\\Temp\\cookbooks"
+	pcw cmd "dir c:\\Windows\\Temp\\cookbooks"
 
 #### Downloading a file
 

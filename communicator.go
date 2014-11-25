@@ -1,186 +1,252 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/masterzen/winrm/winrm"
-	"github.com/mitchellh/packer/common/uuid"
+	"github.com/mefellows/winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 )
 
-// A Communicator is the interface used to communicate with the machine
-// that exists that will eventually be packaged into an image. Communicators
-// allow you to execute remote commands, upload files, etc.
-//
-// Communicators must be safe for concurrency, meaning multiple calls to
-// Start or any other method may be called at the same time.
 type Communicator struct {
-	host string
-	port int
-	user string
-	pass string
+	client   *winrm.Client
+	endpoint *winrm.Endpoint
+	user     string
+	password string
+	timeout  time.Duration
 }
 
-// Start takes a RemoteCmd and starts it. The RemoteCmd must not be
-// modified after being used with Start, and it must not be used with
-// Start again. The Start method returns immediately once the command
-// is started. It does not wait for the command to complete. The
-// RemoteCmd.Exited field should be used for this.
-func (c *Communicator) Start(rc *packer.RemoteCmd) error {
-	client := winrm.NewClient(&winrm.Endpoint{c.host, c.port}, c.user, c.pass)
-	shell, err := client.CreateShell()
-	if err != nil {
-		return err
-	}
-	defer shell.Close()
-
-	cmd, err := shell.Execute(rc.Command)
-	if err != nil {
-		return err
-	}
-
-	//	go func() {
-	go io.Copy(rc.Stdout, cmd.Stdout)
-	go io.Copy(rc.Stderr, cmd.Stderr)
-
-	cmd.Wait()
-	rc.SetExited(cmd.ExitCode())
-	//	}()
-
-	return nil
+type elevatedShellOptions struct {
+	Command  string
+	User     string
+	Password string
 }
 
-// Upload uploads a file to the machine to the given path with the
-// contents coming from the given reader. This method will block until
-// it completes.
-func (c *Communicator) Upload(path string, r io.Reader, fi *os.FileInfo) (err error) {
+// Creates a new packer.Communicator implementation over WinRM.
+// Called when Packer tries to connect to WinRM
+func New(endpoint *winrm.Endpoint, user string, password string, timeout time.Duration) (*Communicator, error) {
 
-	client := winrm.NewClient(&winrm.Endpoint{c.host, c.port}, c.user, c.pass)
+	// Create the WinRM client we use internally
+	params := winrm.DefaultParameters()
+	params.Timeout = ISO8601DurationString(timeout)
+	client := winrm.NewClientWithParameters(endpoint, user, password, params)
+
+	// Attempt to connect to the WinRM service
 	shell, err := client.CreateShell()
 	if err != nil {
-		return
+		return nil, err
 	}
-	defer shell.Close()
 
-	temp, err := runCommand(shell, fmt.Sprintf(
-		`echo %%TEMP%%\packer-%s.tmp`, uuid.TimeOrderedUUID()))
-
+	err = shell.Close()
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	bytes, err := ioutil.ReadAll(r)
+	return &Communicator{
+		endpoint: endpoint,
+		user:     user,
+		password: password,
+		timeout:  timeout,
+		client:   client,
+	}, nil
+}
+
+func (c *Communicator) Start(cmd *packer.RemoteCmd) (err error) {
+	// TODO: Can we only run as Elevated if specified in config/setting.
+	// It's fairly slow
+	return c.StartElevated(cmd)
+	//return c.StartUnelevated(cmd)
+}
+
+func (c *Communicator) StartElevated(cmd *packer.RemoteCmd) (err error) {
+	// Wrap the command in scheduled task
+	tpl, err := packer.NewConfigTemplate()
 	if err != nil {
 		return err
 	}
 
-	temp = strings.TrimSpace(temp)
-	for _, chunk := range encodeChunks(bytes, 8000-len(temp)) {
+	// The command gets put into an interpolated string in the PS script,
+	// so we need to escape any embedded quotes.
+	escapedCmd := strings.Replace(cmd.Command, "\"", "`\"", -1)
 
-		_, err = runCommand(shell,
-			fmt.Sprintf(`echo %s >> %s`, chunk, temp))
-
-		if err != nil {
-			return
-		}
+	elevatedScript, err := tpl.Process(ElevatedShellTemplate, &elevatedShellOptions{
+		Command:  escapedCmd,
+		User:     c.user,
+		Password: c.password,
+	})
+	if err != nil {
+		return err
 	}
 
-	_, err = runPowershell(shell, fmt.Sprintf(`
-		$path = "%s"
-		$temp = "%s"
+	// Upload the script which creates and manages the scheduled task
+	err = c.Upload("$env:TEMP/packer-elevated-shell.ps1", strings.NewReader(elevatedScript), nil)
+	if err != nil {
+		return err
+	}
 
-		$dir = [System.IO.Path]::GetDirectoryName($path)
-		if (-Not (Test-Path $dir)) {
-			mkdir $dir
-		} elseif (Test-Path $path) {
-			rm $path
-		}
+	// Run the script that was uploaded
+	command := fmt.Sprintf("powershell -executionpolicy bypass -file \"%s\"", "%TEMP%/packer-elevated-shell.ps1")
+	return c.runCommand(command, cmd)
+}
 
-		$lines = Get-Content $temp
-		$value = [string]::join("",$lines)
-		$bytes = [System.Convert]::FromBase64String($value)
+func (c *Communicator) StartUnelevated(cmd *packer.RemoteCmd) (err error) {
+	return c.runCommand(cmd.Command, cmd)
+}
 
-		$file = [System.IO.Path]::GetFullPath($path)
-		[System.IO.File]::WriteAllBytes($file, $bytes)
+func (c *Communicator) runCommand(commandText string, cmd *packer.RemoteCmd) (err error) {
+	// This is a dangerouns printf as Uploads use this also, meaning large
+	// amounts of base64 text could be stored in logs / terminals etc.
+	log.Printf("starting remote command: %s", cmd.Command)
 
-		del $temp
-	`, path, temp))
+	// Create a new shell process on the guest
+	err = c.client.RunWithInput(commandText, os.Stdout, os.Stderr, os.Stdin)
+	if err != nil {
+		fmt.Println(err)
+		cmd.SetExited(1)
+		return err
+	}
+	cmd.SetExited(0)
 	return
 }
 
-// UploadDir uploads the contents of a directory recursively to
-// the remote path. It also takes an optional slice of paths to
-// ignore when uploading.
-//
-// The folder name of the source folder should be created unless there
-// is a trailing slash on the source "/". For example: "/tmp/src" as
-// the source will create a "src" directory in the destination unless
-// a trailing slash is added. This is identical behavior to rsync(1).
-func (c *Communicator) UploadDir(dst string, src string, exclude []string) error {
-	panic("not implemented yet")
+func (c *Communicator) Upload(dst string, input io.Reader, ignored *os.FileInfo) error {
+	fm := &fileManager{
+		comm: c,
+	}
+	return fm.Upload(dst, input)
 }
 
-// Download downloads a file from the machine from the given remote path
-// with the contents writing to the given writer. This method will
-// block until it completes.
-func (c *Communicator) Download(path string, w io.Writer) error {
-	panic("not implemented yet")
+func (c *Communicator) UploadDir(dst string, src string, excl []string) error {
+	fm := &fileManager{
+		comm: c,
+	}
+	return fm.UploadDir(dst, src)
 }
 
-func runCommand(shell *winrm.Shell, text string) (string, error) {
-	cmd, err := shell.Execute(text)
-
-	if err != nil {
-		return "", err
-	}
-
-	var stdout, stderr bytes.Buffer
-	go io.Copy(&stdout, cmd.Stdout)
-	go io.Copy(&stderr, cmd.Stderr)
-
-	cmd.Wait()
-
-	if stderr.Len() > 0 {
-		return "", errors.New("Error running command on guest: " + stderr.String())
-	}
-
-	return stdout.String(), nil
+func (c *Communicator) Download(string, io.Writer) error {
+	panic("Download not implemented yet")
 }
 
-func runPowershell(shell *winrm.Shell, text string) (string, error) {
-	var bytes []byte
-	for _, c := range []byte(text) {
-		bytes = append(bytes, c, 0)
-	}
+const ElevatedShellTemplate = `
+$command = "{{.Command}}" + '; exit $LASTEXITCODE'
+$user = '{{.User}}'
+$password = '{{.Password}}'
 
-	encoded := "powershell -NoProfile -EncodedCommand " +
-		base64.StdEncoding.EncodeToString(bytes)
+$task_name = "packer-elevated-shell"
+$out_file = "$env:TEMP\packer-elevated-shell.log"
 
-	return runCommand(shell, encoded)
+if (Test-Path $out_file) {
+  del $out_file
 }
 
-func encodeChunks(bytes []byte, chunkSize int) []string {
-	text := base64.StdEncoding.EncodeToString(bytes)
-	reader := strings.NewReader(text)
+$task_xml = @'
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Principals>
+    <Principal id="Author">
+      <UserId>{user}</UserId>
+      <LogonType>Password</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>false</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>true</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT2H</ExecutionTimeLimit>
+    <Priority>4</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>cmd</Command>
+      <Arguments>{arguments}</Arguments>
+    </Exec>
+  </Actions>
+</Task>
+'@
 
-	var chunks []string
-	chunk := make([]byte, chunkSize)
+$bytes = [System.Text.Encoding]::Unicode.GetBytes($command)
+$encoded_command = [Convert]::ToBase64String($bytes)
+$arguments = "/c powershell.exe -EncodedCommand $encoded_command &gt; $out_file 2&gt;&amp;1"
 
-	for {
-		n, _ := reader.Read(chunk)
-		if n == 0 {
-			break
-		}
+$task_xml = $task_xml.Replace("{arguments}", $arguments)
+$task_xml = $task_xml.Replace("{user}", $user)
 
-		chunks = append(chunks, string(chunk[:n]))
+$schedule = New-Object -ComObject "Schedule.Service"
+$schedule.Connect()
+$task = $schedule.NewTask($null)
+$task.XmlText = $task_xml
+$folder = $schedule.GetFolder("\")
+$folder.RegisterTaskDefinition($task_name, $task, 6, $user, $password, 1, $null) | Out-Null
+
+$registered_task = $folder.GetTask("\$task_name")
+$registered_task.Run($null) | Out-Null
+
+$timeout = 10
+$sec = 0
+while ( (!($registered_task.state -eq 4)) -and ($sec -lt $timeout) ) {
+  Start-Sleep -s 1
+  $sec++
+}
+
+function SlurpOutput($out_file, $cur_line) {
+  if (Test-Path $out_file) {
+    get-content $out_file | select -skip $cur_line | ForEach {
+      $cur_line += 1
+      Write-Host "$_" 
+    }
+  }
+  return $cur_line
+}
+
+$cur_line = 0
+do {
+  Start-Sleep -m 100
+  $cur_line = SlurpOutput $out_file $cur_line
+} while (!($registered_task.state -eq 3))
+
+$exit_code = $registered_task.LastTaskResult
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($schedule) | Out-Null
+
+exit $exit_code
+`
+
+func ISO8601DurationString(d time.Duration) string {
+	// We're not supporting negative durations
+	if d.Seconds() <= 0 {
+		return "PT0S"
 	}
 
-	return chunks
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) - (hours * 60)
+	seconds := int(d.Seconds()) - (hours*3600 + minutes*60)
+
+	s := "PT"
+	if hours > 0 {
+		s = fmt.Sprintf("%s%dH", s, hours)
+	}
+	if minutes > 0 {
+		s = fmt.Sprintf("%s%dM", s, minutes)
+	}
+	if seconds > 0 {
+		s = fmt.Sprintf("%s%dS", s, seconds)
+	}
+
+	return s
 }
