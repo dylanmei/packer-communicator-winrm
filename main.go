@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/mefellows/winrm/winrm"
+	"github.com/masterzen/winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 	rpc "github.com/mitchellh/packer/packer/plugin"
 	"github.com/rakyll/command"

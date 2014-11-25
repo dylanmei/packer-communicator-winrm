@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mefellows/winrm/winrm"
+	"github.com/masterzen/winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 )
 
