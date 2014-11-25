@@ -1,4 +1,4 @@
 box: wercker/golang@1.2.1
 steps:
    - tcnksm/goveralls:
-     token: fguTCM1ubmRm4aFT31KkBO9oX9sDF8rhV
+      token: $COVERALLS_TOKEN
