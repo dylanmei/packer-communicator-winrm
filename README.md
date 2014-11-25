@@ -29,7 +29,8 @@ A Packer *communicator* plugin supports the following functionality: Execute a s
 
 #### Uploading a directory
 
-*not started*
+	pcw dir -from="./scripts/" -to="c:\\windows\\temp\\scripts"
+	pcw cmd "type c:\\Windows\\Temp\\scripts\\test.sh"
 
 #### Downloading a file
 

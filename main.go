@@ -111,7 +111,7 @@ func (f *DirCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (f *DirCommand) Run(args []string) {
-	communicator, _ := New(&winrm.Endpoint{*host, *port}, *user, *pass, 500)
+	communicator, _ := New(&winrm.Endpoint{*host, *port}, *user, *pass, *timeout)
 
 	_, err := os.Stat(*f.from)
 	if err != nil {
