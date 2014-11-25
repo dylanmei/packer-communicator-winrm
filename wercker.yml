@@ -1,4 +1,11 @@
 box: wercker/golang@1.2.1
-steps:
-   - tcnksm/goveralls:
-      token: $COVERALLS_TOKEN
+build:
+    steps:
+        - setup-go-workspace
+        - script:
+            name: go get        
+            code: |
+                go get -t ./...
+        - tcnksm/goveralls:
+            token: $COVERALLS_TOKEN
+
