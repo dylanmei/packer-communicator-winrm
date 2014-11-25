@@ -56,7 +56,10 @@ func New(endpoint *winrm.Endpoint, user string, password string, timeout time.Du
 }
 
 func (c *Communicator) Start(cmd *packer.RemoteCmd) (err error) {
+	// TODO: Can we only run as Elevated if specified in config/setting.
+	// It's fairly slow
 	return c.StartElevated(cmd)
+	//return c.StartUnelevated(cmd)
 }
 
 func (c *Communicator) StartElevated(cmd *packer.RemoteCmd) (err error) {
@@ -95,51 +98,18 @@ func (c *Communicator) StartUnelevated(cmd *packer.RemoteCmd) (err error) {
 }
 
 func (c *Communicator) runCommand(commandText string, cmd *packer.RemoteCmd) (err error) {
+	// This is a dangerouns printf as Uploads use this also, meaning large
+	// amounts of base64 text could be stored in logs / terminals etc.
 	log.Printf("starting remote command: %s", cmd.Command)
 
 	// Create a new shell process on the guest
-	shell, err := c.client.CreateShell()
+	err = c.client.RunWithInput(commandText, os.Stdout, os.Stderr, os.Stdin)
 	if err != nil {
-		log.Printf("error creating shell, retrying once more: %s", err)
-		shell, err = c.client.CreateShell()
-		if err != nil {
-			log.Printf("error creating shell, giving up: %s", err)
-			return err
-		}
-	}
-
-	// Execute the command
-	var winrmCmd *winrm.Command
-	winrmCmd, err = shell.Execute(commandText)
-	if err != nil {
-		log.Printf("error executing command: %s", err)
+		fmt.Println(err)
+		cmd.SetExited(1)
 		return err
 	}
-
-	// Start a goroutine to wait for the shell to end and set the
-	// exit boolean and status.
-	go func() {
-
-		defer func() {
-			err = winrmCmd.Close()
-			if err != nil {
-				log.Printf("winrm command failed to close: %s", err)
-			}
-			err = shell.Close()
-			if err != nil {
-				log.Printf("shell failed to close: %s", err)
-			}
-		}()
-
-		// Block until done
-		winrmCmd.Wait()
-
-		// Report exit status and trigger done
-		exitStatus := winrmCmd.ExitCode()
-		log.Printf("remote command exited with '%d'", exitStatus)
-		cmd.SetExited(exitStatus)
-	}()
-
+	cmd.SetExited(0)
 	return
 }
 
