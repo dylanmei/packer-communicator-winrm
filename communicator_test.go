@@ -2,52 +2,157 @@ package main
 
 import (
 	"bytes"
-	"io"
+	"fmt"
+	"os"
 	"testing"
+	"time"
 
-	"github.com/dylanmei/winrmtest"
+	"github.com/mefellows/winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 )
 
-func Test_running_a_command(t *testing.T) {
-	r := winrmtest.NewRemote()
-	defer r.Close()
+func TestCommIsCommunicator(t *testing.T) {
+	var raw interface{}
+	raw = &Communicator{}
+	if _, ok := raw.(packer.Communicator); !ok {
+		t.Fatalf("comm must be a communicator")
+	}
+}
 
-	r.CommandFunc("echo tacos", func(out, err io.Writer) int {
-		out.Write([]byte("tacos"))
-		return 0
-	})
+func TestStart(t *testing.T) {
+	// This test hits an already running Windows VM
+	// You can comment this line out temporarily during development
+	t.Skip()
 
-	stdout := bytes.NewBuffer(make([]byte, 0))
-	stderr := bytes.NewBuffer(make([]byte, 0))
-	rc := &packer.RemoteCmd{
-		Command: "echo tacos",
-		Stdout:  stdout,
-		Stderr:  stderr,
+	comm, err := New(&winrm.Endpoint{"localhost", 5985}, "vagrant", "vagrant", time.Duration(1)*time.Minute)
+	if err != nil {
+		t.Fatalf("error connecting to WinRM: %s", err)
 	}
 
-	comm := &Communicator{
-		host: r.Host,
-		port: r.Port,
-	}
+	var cmd packer.RemoteCmd
+	var outWriter, errWriter bytes.Buffer
 
-	err := comm.Start(rc)
+	cmd.Command = "dir"
+	cmd.Stdout = &outWriter
+	cmd.Stderr = &errWriter
+
+	err = comm.Start(&cmd)
+	if err != nil {
+		t.Fatalf("error starting cmd: %s", err)
+	}
+	cmd.Wait()
+
+	fmt.Println(outWriter.String())
+	fmt.Println(errWriter.String())
 
 	if err != nil {
-		t.Errorf("Unexpected error %v", err)
+		t.Fatalf("error running cmd: %s", err)
 	}
 
-	rc.Wait()
+	if cmd.ExitStatus != 0 {
+		t.Fatalf("exit status was non-zero: %d", cmd.ExitStatus)
+	}
+}
 
-	if rc.ExitStatus != 0 {
-		t.Errorf(`expected rc.ExitStatus=0 but was %d`, rc.ExitStatus)
+func TestStartElevated(t *testing.T) {
+	// This test hits an already running Windows VM
+	// You can comment this line out temporarily during development
+	t.Skip()
+
+	comm, err := New(&winrm.Endpoint{"localhost", 5985}, "vagrant", "vagrant", time.Duration(1)*time.Minute)
+	if err != nil {
+		t.Fatalf("error connecting to WinRM: %s", err)
 	}
 
-	if stderr.String() != "" {
-		t.Errorf(`expected sterr="" but was "%s"`, stderr)
+	var cmd packer.RemoteCmd
+	var outWriter, errWriter bytes.Buffer
+
+	cmd.Command = "dir"
+	cmd.Stdout = &outWriter
+	cmd.Stderr = &errWriter
+
+	err = comm.StartElevated(&cmd)
+	if err != nil {
+		t.Fatalf("error starting cmd: %s", err)
+	}
+	cmd.Wait()
+
+	fmt.Println(outWriter.String())
+	fmt.Println(errWriter.String())
+
+	if err != nil {
+		t.Fatalf("error running cmd: %s", err)
 	}
 
-	if stdout.String() != "tacos" {
-		t.Errorf(`expected stdout=tacos but was "%s"`, stdout)
+	if cmd.ExitStatus != 0 {
+		t.Fatalf("exit status was non-zero: %d", cmd.ExitStatus)
+	}
+}
+
+func TestUpload(t *testing.T) {
+	// This test hits an already running Windows VM
+	// You can comment this line out temporarily during development
+	t.Skip()
+
+	comm, err := New(&winrm.Endpoint{"localhost", 5985}, "vagrant", "vagrant", time.Duration(1)*time.Minute)
+	if err != nil {
+		t.Fatalf("error connecting to WinRM: %s", err)
+	}
+
+	f, err := os.Open("packer.jpg")
+	if err != nil {
+		t.Fatalf("error opening file: %s", err)
+	}
+	defer f.Close()
+
+	err = comm.Upload("c:\\packer.jpg", f, nil)
+	if err != nil {
+		t.Fatalf("error uploading file: %s", err)
+	}
+}
+
+func TestUploadDir(t *testing.T) {
+	// This test hits an already running Windows VM
+	// You can comment this line out temporarily during development
+	t.Skip()
+
+	comm, err := New(&winrm.Endpoint{"localhost", 5985}, "vagrant", "vagrant", time.Duration(1)*time.Minute)
+	if err != nil {
+		t.Fatalf("error connecting to WinRM: %s", err)
+	}
+
+	err = comm.UploadDir("c:\\src\\chef-repo", "~/src/chef-repo", nil)
+	if err != nil {
+		t.Fatalf("error uploading dir: %s", err)
+	}
+}
+
+func TestISO8601DurationString(t *testing.T) {
+	// Test complex duration with hours, minutes, seconds
+	d := time.Duration(3701) * time.Second
+	s := ISO8601DurationString(d)
+	if s != "PT1H1M41S" {
+		t.Fatalf("bad ISO 8601 duration string: %s", s)
+	}
+
+	// Test only minutes duration
+	d = time.Duration(20) * time.Minute
+	s = ISO8601DurationString(d)
+	if s != "PT20M" {
+		t.Fatalf("bad ISO 8601 duration string for 20M: %s", s)
+	}
+
+	// Test only seconds
+	d = time.Duration(1) * time.Second
+	s = ISO8601DurationString(d)
+	if s != "PT1S" {
+		t.Fatalf("bad ISO 8601 duration string for 1S: %s", s)
+	}
+
+	// Test negative duration (unsupported)
+	d = time.Duration(-1) * time.Second
+	s = ISO8601DurationString(d)
+	if s != "PT0S" {
+		t.Fatalf("bad ISO 8601 duration string for negative: %s", s)
 	}
 }
