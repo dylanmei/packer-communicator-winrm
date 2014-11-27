@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	plugin "github.com/dylanmei/packer-communicator-winrm/communicator/winrm"
 	"github.com/masterzen/winrm/winrm"
 	"github.com/mitchellh/packer/packer"
 	rpc "github.com/mitchellh/packer/packer/plugin"
@@ -26,7 +27,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		server.RegisterCommunicator(new(Communicator))
+		server.RegisterCommunicator(new(plugin.Communicator))
 		server.Serve()
 	}
 }
@@ -48,7 +49,7 @@ func (r *RunCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 func (r *RunCommand) Run(args []string) {
 	command := args[0]
 
-	communicator, err := New(&winrm.Endpoint{*host, *port}, *user, *pass, *timeout)
+	communicator, err := plugin.New(&winrm.Endpoint{*host, *port}, *user, *pass, *timeout)
 	rc := &packer.RemoteCmd{
 		Command: command,
 		Stdout:  os.Stdout,
@@ -80,7 +81,7 @@ func (f *FileCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (f *FileCommand) Run(args []string) {
-	communicator, err := New(&winrm.Endpoint{*host, *port}, *user, *pass, *timeout)
+	communicator, err := plugin.New(&winrm.Endpoint{*host, *port}, *user, *pass, *timeout)
 
 	info, err := os.Stat(*f.from)
 	if err != nil {
@@ -110,7 +111,7 @@ func (f *DirCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (f *DirCommand) Run(args []string) {
-	communicator, _ := New(&winrm.Endpoint{*host, *port}, *user, *pass, *timeout)
+	communicator, _ := plugin.New(&winrm.Endpoint{*host, *port}, *user, *pass, *timeout)
 
 	_, err := os.Stat(*f.from)
 	if err != nil {
