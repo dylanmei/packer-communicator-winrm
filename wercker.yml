@@ -7,5 +7,6 @@ build:
             code: |
                 go get -t ./...
         - tcnksm/goveralls:
+            cwd: communicator/
             token: $COVERALLS_TOKEN
 
