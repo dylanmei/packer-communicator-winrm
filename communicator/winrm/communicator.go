@@ -57,9 +57,9 @@ func New(endpoint *winrm.Endpoint, user string, password string, timeout time.Du
 
 func (c *Communicator) Start(cmd *packer.RemoteCmd) (err error) {
 	// TODO: Can we only run as Elevated if specified in config/setting.
-	// It's fairly slow
-	return c.StartElevated(cmd)
-	//return c.StartUnelevated(cmd)
+	// It's fairly slow. It also doesn't work see Issue #1
+	//return c.StartElevated(cmd)
+	return c.StartUnelevated(cmd)
 }
 
 func (c *Communicator) StartElevated(cmd *packer.RemoteCmd) (err error) {
