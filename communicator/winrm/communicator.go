@@ -83,25 +83,25 @@ func (c *Communicator) StartElevated(cmd *packer.RemoteCmd) (err error) {
 	}
 
 	// Upload the script which creates and manages the scheduled task
+	log.Printf("uploading elevated command: %s", cmd.Command)
 	err = c.Upload("$env:TEMP/packer-elevated-shell.ps1", strings.NewReader(elevatedScript), nil)
 	if err != nil {
 		return err
 	}
 
 	// Run the script that was uploaded
-	command := fmt.Sprintf("powershell -executionpolicy bypass -file \"%s\"", "%TEMP%/packer-elevated-shell.ps1")
+	path := "%TEMP%/packer-elevated-shell.ps1"
+	log.Printf("executing elevated command: %s", path)
+	command := fmt.Sprintf("powershell -executionpolicy bypass -file \"%s\"", path)
 	return c.runCommand(command, cmd)
 }
 
 func (c *Communicator) StartUnelevated(cmd *packer.RemoteCmd) (err error) {
+	log.Printf("starting remote command: %s", cmd.Command)
 	return c.runCommand(cmd.Command, cmd)
 }
 
 func (c *Communicator) runCommand(commandText string, cmd *packer.RemoteCmd) (err error) {
-	// This is a dangerouns printf as Uploads use this also, meaning large
-	// amounts of base64 text could be stored in logs / terminals etc.
-	log.Printf("starting remote command: %s", cmd.Command)
-
 	// Create a new shell process on the guest
 	err = c.client.RunWithInput(commandText, os.Stdout, os.Stderr, os.Stdin)
 	if err != nil {

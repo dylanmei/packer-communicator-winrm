@@ -4,15 +4,16 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/masterzen/winrm/winrm"
-	"github.com/mitchellh/packer/common/uuid"
-	"github.com/mitchellh/packer/packer"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/masterzen/winrm/winrm"
+	"github.com/mitchellh/packer/common/uuid"
+	"github.com/mitchellh/packer/packer"
 )
 
 type fileManager struct {
@@ -46,6 +47,7 @@ func (f *fileManager) Upload(dst string, input io.Reader) error {
 		return err
 	}
 
+	log.Printf("uploading to temporary file: %s", cmdGuestFilePath)
 	for _, chunk := range encodeChunks(bytes, 8000-len(cmdGuestFilePath)) {
 		err = f.runCommand(fmt.Sprintf("echo %s >> \"%s\"", chunk, cmdGuestFilePath))
 		if err != nil {
@@ -54,6 +56,7 @@ func (f *fileManager) Upload(dst string, input io.Reader) error {
 	}
 
 	// Move the file to its permanent location and decode
+	log.Printf("moving file to destination: %s", dst)
 	err = f.runCommand(winrm.Powershell(fmt.Sprintf(`
     $tmp_file_path = [System.IO.Path]::GetFullPath("%s")
     $dest_file_path = [System.IO.Path]::GetFullPath("%s")
@@ -103,7 +106,7 @@ func (f *fileManager) runCommand(cmd string) error {
 		Command: cmd,
 	}
 
-	err := f.comm.StartUnelevated(remoteCmd)
+	err := f.comm.runCommand(cmd, remoteCmd)
 	if err != nil {
 		return err
 	}
