@@ -4,37 +4,7 @@ A [Packer](http://www.packer.io/) communicator plugin for interacting with machi
 
 ### Status
 
-This is a work in progress. *It is not a usable Packer plugin yet*. However, while the kinks are being worked out it is also a stand-alone command-line application.
-
-[![wercker status](https://app.wercker.com/status/c702a1133a8359cc8830ad60487ee751/m "wercker status")](https://app.wercker.com/project/bykey/c702a1133a8359cc8830ad60487ee751)
-[![Coverage Status](https://coveralls.io/repos/dylanmei/packer-communicator-winrm/badge.png?branch=HEAD)](https://coveralls.io/r/dylanmei/packer-communicator-winrm?branch=HEAD)
-
-### Usage
-
-A Packer *communicator* plugin supports the following functionality: Execute a shell command, upload a file, download a file, and upload a directory.
-
-#### Help
-
-    alias pcw=`pwd`/packer-communicator-winrm
-    pcw help
-
-#### Executing a shell command
-
-    pcw cmd "powershell Write-Host 'Hello' (Get-WmiObject -class Win32_OperatingSystem).Caption"
-
-#### Uploading a file
-
-    pcw file -from=./README.md -to=C:\\Windows\\Temp\\README.md
-    pcw cmd "type C:\\Windows\\Temp\\README.md"
-
-#### Uploading a directory
-
-	pcw dir -from="~/cookbooks/" -to="c:\\Windows\\Temp\\cookbooks"
-	pcw cmd "dir c:\\Windows\\Temp\\cookbooks"
-
-#### Downloading a file
-
-*not started*
+*This plugin has been moved*. It is now a part of [packer-community/packer-windows-plugins](https://github.com/packer-community/packer-windows-plugins)
 
 ### Props
 
