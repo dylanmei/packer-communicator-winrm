@@ -4,7 +4,7 @@ A [Packer](http://www.packer.io/) communicator plugin for interacting with machi
 
 ### Status
 
-**IMPORTANT** This plugin made its way into [packer-community/packer-windows-plugins](https://github.com/packer-community/packer-windows-plugins) and then to [Packer 8.0](https://www.hashicorp.com/blog/packer-0-8.html). The code in this repo is unbuildable.
+**IMPORTANT** This plugin made its way into [packer-community/packer-windows-plugins](https://github.com/packer-community/packer-windows-plugins) and then to [Packer 0.8](https://www.hashicorp.com/blog/packer-0-8.html). The code in this repo is unbuildable.
 
 ### Props
 
